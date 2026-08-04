@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUA FARMING - Authentication</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-color: #10b981;
+      --error-color: #ef4444;
+      --warning-color: #f59e0b;
+      --dark-bg: #0f172a;
+      --card-bg: rgba(15, 23, 42, 0.7);
+      --glass-bg: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+      --text-light: #e2e8f0;
+      --text-muted: #94a3b8;
+      --input-bg: rgba(255, 255, 255, 0.05);
+      --input-border: rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: var(--text-light);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    /* ==================== HOME PAGE ==================== */
+    .home-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 100vh;
+    }
+
+    .home-content {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 60px 40px;
+      max-width: 600px;
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .home-content h1 {
+      font-size: 3.5rem;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .home-content p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    .auth-buttons {
+      display: flex;
+      gap: 20px;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn-auth {
+      padding: 15px 40px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      max-width: 300px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-signup {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-signup:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-login {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .btn-login:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* ==================== AUTH FORMS ==================== */
+    .auth-page {
+      display: none;
+    }
+
+    .auth-page.active {
+      display: flex;
+    }
+
+    .auth-container {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 450px;
+      width: 100%;
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .auth-header h2 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .auth-header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-light);
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--input-bg);
+      border: 2px solid var(--input-border);
+      border-radius: 10px;
+      color: var(--text-light);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(102, 126, 234, 0.5);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .password-toggle {
+      position: relative;
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: color 0.3s;
+    }
+
+    .password-toggle-btn:hover {
+      color: var(--text-light);
+    }
+
+    .validation-message {
+      font-size: 0.85rem;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .validation-message.error {
+      color: var(--error-color);
+    }
+
+    .validation-message.success {
+      color: var(--success-color);
+    }
+
+    .validation-message.warning {
+      color: var(--warning-color);
+    }
+
+    /* Password Strength Indicator */
+    .password-strength {
+      margin-top: 15px;
+      display: none;
+    }
+
+    .password-strength.show {
+      display: block;
+    }
+
+    .strength-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .strength-fill.weak {
+      width: 33%;
+      background: var(--error-color);
+    }
+
+    .strength-fill.medium {
+      width: 66%;
+      background: var(--warning-color);
+    }
+
+    .strength-fill.strong {
+      width: 100%;
+      background: var(--success-color);
+    }
+
+    .strength-text {
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+
+    .strength-label {
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .strength-label.weak {
+      color: var(--error-color);
+    }
+
+    .strength-label.medium {
+      color: var(--warning-color);
+    }
+
+    .strength-label.strong {
+      color: var(--success-color);
+    }
+
+    .requirements-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+    }
+
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+
+    .requirement.met {
+      color: var(--success-color);
+    }
+
+    .requirement-icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+
+    .requirement.met .requirement-icon {
+      background: currentColor;
+      color: white;
+    }
+
+    /* Checkbox */
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--primary-gradient);
+    }
+
+    .checkbox-group label {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn.loading {
+      position: relative;
+      color: transparent;
+    }
+
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 50%;
+      left: 50%;
+      margin-left: -8px;
+      margin-top: -8px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.6s linear infinite;
+    }
+
+    /* Form Links */
+    .form-footer {
+      text-align: center;
+      margin-top: 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .form-footer a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+
+    .form-footer a:hover {
+      color: #764ba2;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      animation: slideInDown 0.4s ease-out;
+    }
+
+    .modal h3 {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+    }
+
+    .modal p {
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    .modal-user-id {
+      background: rgba(102, 126, 234, 0.1);
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: #667eea;
+      word-break: break-all;
+    }
+
+    .modal.success .modal-user-id {
+      border-color: var(--success-color);
+      color: var(--success-color);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .modal.error .modal-user-id {
+      border-color: var(--error-color);
+      color: var(--error-color);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .modal-btn.primary:hover {
+      transform: translateY(-2px);
+    }
+
+    .modal-btn.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-light);
+      border: 1px solid var(--glass-border);
+    }
+
+    .modal-btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Icon */
+    .modal-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .modal-icon.success {
+      color: var(--success-color);
+    }
+
+    .modal-icon.error {
+      color: var(--error-color);
+    }
+
+    .modal-icon.info {
+      color: #667eea;
+    }
+
+    /* Animations */
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .auth-container {
+        padding: 25px;
+      }
+
+      .home-content {
+        padding: 40px 25px;
+      }
+
+      .home-content h1 {
+        font-size: 2.5rem;
+      }
+
+      .auth-buttons {
+        flex-direction: column;
+      }
+
+      .btn-auth {
+        width: 100%;
+      }
+
+      .requirements-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HOME PAGE -->
+    <div id="homePage" class="home-page active">
+      <div class="home-content">
+        <h1>AQUA FARMING</h1>
+        <p>Smart Shrimp Farm Management System<br>Efficient • Secure • Scalable</p>
+        <div class="auth-buttons">
+          <button class="btn-auth btn-signup" onclick="showPage('signupPage')">Sign Up (New User)</button>
+          <button class="btn-auth btn-login" onclick="showPage('loginPage')">Log In (Existing User)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIGN UP PAGE -->
+    <div id="signupPage" class="auth-page">
+      <div class="auth-container">
+        <div class="auth-header">
+          <h2>Create Account</h2>
+          <p>Join AQUA FARMING and manage your farm efficiently</p>
+        </div>
+        <form id="signupForm" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label for="fullName">Full Name *</label>
+            <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
+            <div id="fullNameError" class="validation-message error" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address *</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required onchange="validateEmail()">
+            <div id="emailError" class="validation-message error" style="display:none;"></div>
+            <div id="emailSuccess" class="validation-message success" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="mobileNumber">Mobile Number (Optional)</label>
+            <input type="tel" id="mobileNumber" name="mobileNumber" placeholder="Enter your mobile number">
+          </div>
+
+          <div class="form-group">
+            <label for="username">Username *</label>
+            <input type="text" id="username" name="username" placeholder="Choose a unique username" required onchange="validateUsername()">
+            <div id="usernameError" class="validation-message error" style="display:none;"></div>
+            <div id="usernameSuccess" class="validation-message success" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password *</label>
+            <div class="password-toggle">
+              <input type="password" id="password" name="password" placeholder="Create a strong password" required oninput="validatePasswordStrength()">
+              <button type="button" class="password-toggle-btn" onclick="togglePassword('password')">👁️</button>
+            </div>
+            <div id="passwordError" class="validation-message error" style="display:none;"></div>
+            
+            <div id="passwordStrength" class="password-strength">
+              <div class="strength-bar">
+                <div id="strengthFill" class="strength-fill"></div>
+              </div>
+              <div class="strength-text">
+                <span>Password Strength:</span>
+                <span id="strengthLabel" class="strength-label">Weak</span>
+              </div>
+              <div class="requirements-list">
+                <div class="requirement" id="req-length">
+                  <span class="requirement-icon">✓</span>
+                  <span>Min 8 characters</span>
+                </div>
+                <div class="requirement" id="req-upper">
+                  <span class="requirement-icon">✓</span>
+                  <span>Uppercase (A-Z)</span>
+                </div>
+                <div class="requirement" id="req-lower">
+                  <span class="requirement-icon">✓</span>
+                  <span>Lowercase (a-z)</span>
+                </div>
+                <div class="requirement" id="req-number">
+                  <span class="requirement-icon">✓</span>
+                  <span>Number (0-9)</span>
+                </div>
+                <div class="requirement" id="req-special">
+                  <span class="requirement-icon">✓</span>
+                  <span>Special (!@#$%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password *</label>
+            <div class="password-toggle">
+              <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+              <button type="button" class="password-toggle-btn" onclick="togglePassword('confirmPassword')">👁️</button>
+            </div>
+            <div id="confirmPasswordError" class="validation-message error" style="display:none;"></div>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="agreeTerms" required>
+            <label for="agreeTerms">I agree to the Terms & Conditions</label>
+          </div>
+
+          <button type="submit" class="btn" id="signupBtn">Create Account</button>
+
+          <div class="form-footer">
+            Already have an account? <a onclick="showPage('loginPage')">Log In</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- LOGIN PAGE -->
+    <div id="loginPage" class="auth-page">
+      <div class="auth-container">
+        <div class="auth-header">
+          <h2>Welcome Back</h2>
+          <p>Login with your User ID or Username</p>
+        </div>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="credential">User ID or Username *</label>
+            <input type="text" id="credential" name="credential" placeholder="Enter your User ID or Username" required>
+            <div id="credentialError" class="validation-message error" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password *</label>
+            <div class="password-toggle">
+              <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
+              <button type="button" class="password-toggle-btn" onclick="togglePassword('loginPassword')">👁️</button>
+            </div>
+            <div id="loginPasswordError" class="validation-message error" style="display:none;"></div>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="rememberMe">
+            <label for="rememberMe">Remember me for 30 days</label>
+          </div>
+
+          <button type="submit" class="btn" id="loginBtn">Log In</button>
+
+          <div class="form-footer">
+            Don't have an account? <a onclick="showPage('signupPage')">Sign Up</a><br>
+            Forgot your password? <a onclick="showPage('forgotPage')">Reset Password</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD PAGE -->
+    <div id="forgotPage" class="auth-page">
+      <div class="auth-container">
+        <div class="auth-header">
+          <h2>Reset Password</h2>
+          <p>Enter your email to receive a reset link</p>
+        </div>
+        <form id="forgotForm" onsubmit="handleForgotPassword(event)">
+          <div class="form-group">
+            <label for="forgotEmail">Email Address *</label>
+            <input type="email" id="forgotEmail" name="forgotEmail" placeholder="Enter your registered email" required>
+            <div id="forgotEmailError" class="validation-message error" style="display:none;"></div>
+          </div>
+
+          <button type="submit" class="btn" id="forgotBtn">Send Reset Link</button>
+
+          <div class="form-footer">
+            Remember your password? <a onclick="showPage('loginPage')">Log In</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div id="modal" class="modal">
+      <div id="modalIcon" class="modal-icon"></div>
+      <h3 id="modalTitle">Modal Title</h3>
+      <p id="modalMessage">Modal message goes here</p>
+      <div id="modalUserId" class="modal-user-id" style="display:none;"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn primary" id="modalPrimaryBtn" onclick="closeModal()">OK</button>
+        <button class="modal-btn secondary" id="modalSecondaryBtn" style="display:none;" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUA FARMING - Vannamei Shrimp Pond Management</title>
+  <meta name="description" content="Professional Aqua Farm Management System for Vannamei Shrimp Farming. Owner: Bhatraju Raju.">
+  <meta name="theme-color" content="#00f2fe">
+
+  <!-- PWA Manifest & App Store Setup -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/farm_background.png">
+  
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Firebase Compat JS SDK (CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- ==================== AUTHENTICATION OVERLAY SCREEN ==================== -->
+  <div id="loginOverlay" class="login-overlay-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-brand-icon">
+          <i class="fas fa-water"></i>
+        </div>
+        <h2 data-i18n="aquaFarming">AQUA FARMING</h2>
+        <p><span data-i18n="owner">Owner</span>: <strong>Bhatraju Raju</strong></p>
+      </div>
+
+      <!-- Quick Demo Login Account Selector Pills -->
+      <div class="quick-login-pills">
+        <button class="quick-pill active" onclick="window.AQUA_APP.fillLogin('manthena', 'owner123')">
+          <i class="fas fa-crown"></i> <span data-i18n="owner">Owner</span>
+        </button>
+        <button class="quick-pill" onclick="window.AQUA_APP.fillLogin('rajesh', 'super123')">
+          <i class="fas fa-user-check"></i> <span data-i18n="supervisor">Supervisor</span>
+        </button>
+        <button class="quick-pill" onclick="window.AQUA_APP.fillLogin('ramu', 'servant123')">
+          <i class="fas fa-hands-helping"></i> <span data-i18n="servant">Servant</span>
+        </button>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group" style="margin-bottom:1.1rem;">
+          <label for="loginUsername"><i class="fas fa-user"></i> <span data-i18n="usernameLabel">Username</span>:</label>
+          <input type="text" id="loginUsername" class="form-control" value="manthena" data-i18n-placeholder="loginUsername" placeholder="Enter username..." required style="padding:0.75rem;">
+        </div>
+
+        <div class="form-group" style="margin-bottom:1.5rem;">
+          <label for="loginPassword"><i class="fas fa-key"></i> <span data-i18n="passwordLabel">Password</span>:</label>
+          <div style="position:relative;">
+            <input type="password" id="loginPassword" class="form-control" value="owner123" data-i18n-placeholder="loginPassword" placeholder="Enter password..." required style="padding:0.75rem;">
+            <i class="fas fa-eye" id="togglePasswordBtn" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--text-muted);"></i>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:0.85rem; font-size:1rem;">
+          <i class="fas fa-sign-in-alt"></i> <span data-i18n="signInToAqua">Sign In to AQUA FARMING</span>
+        </button>
+      </form>
+
+      <div style="margin-top:1.5rem; text-align:center; font-size:0.75rem; color:var(--text-dim);">
+        <p><i class="fas fa-shield-alt" style="color:var(--primary);"></i> <span data-i18n="secureJWT">Secure JWT Encrypted Login</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APPLICATION WRAPPER ==================== -->
+  <div class="app-container" id="mainAppWrapper" style="display:none;">
+    
+    <!-- Header & Top Navigation Bar -->
+    <header class="app-header">
+      <div class="header-top">
+        <div class="brand-section">
+          <div class="brand-icon">
+            <i class="fas fa-water"></i>
+          </div>
+          <div class="brand-text">
+            <h1 data-i18n="aquaFarming">AQUA FARMING</h1>
+            <p><span data-i18n="owner">Owner</span>: <strong>Bhatraju Raju</strong> | Vannamei Shrimp Management</p>
+          </div>
+        </div>
+
+        <div class="header-controls">
+          <!-- Install App Button (PWA / Store) -->
+          <button id="installPwaBtn" class="btn btn-secondary btn-sm" style="display:none; border-color:var(--primary); color:var(--primary);">
+            <i class="fas fa-download"></i> <span data-i18n="installAquaApp">Install Aqua App</span>
+          </button>
+
+          <button id="langToggleBtn" class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.toggleLanguage()" type="button">
+            <i class="fas fa-language"></i> <span data-i18n="switchLanguage">తెలుగు</span>
+          </button>
+
+          <!-- User Profile & Logout -->
+          <div class="user-profile-badge">
+            <i class="fas fa-user-circle" style="color:var(--primary); font-size:1.1rem;"></i>
+            <span id="activeUserName">Bhatraju Raju</span>
+            <span id="activeUserRole" class="user-role">OWNER</span>
+            <button class="btn btn-danger btn-sm" onclick="window.AQUA_APP.logout()" style="margin-left:0.5rem; padding:0.2rem 0.5rem; font-size:0.72rem;">
+              <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
+            </button>
+          </div>
+
+          <!-- Storage Mode Indicator / Config Trigger -->
+          <button id="storageBadge" class="storage-badge" onclick="window.AQUA_APP.openFirebaseConfigModal()">
+            <span class="dot-indicator"></span> <span data-i18n="localEngine">Local Engine (Offline Ready)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs Bar -->
+      <nav class="nav-tabs-wrapper">
+        <button class="nav-tab active owner-only supervisor-only" data-tab="dashboard">
+          <i class="fas fa-chart-pie"></i> <span data-i18n="ownerDashboard">Executive Dashboard</span>
+        </button>
+        <button class="nav-tab" data-tab="ponds">
+          <i class="fas fa-layer-group"></i> <span data-i18n="pondManagement">Pond Management</span>
+        </button>
+        <button class="nav-tab" data-tab="servant-feeding">
+          <i class="fas fa-utensils"></i> <span data-i18n="servantFeedingPortal">Servant Feeding Portal</span>
+        </button>
+        <button class="nav-tab supervisor-only" data-tab="supervisor">
+          <i class="fas fa-clipboard-list"></i> <span data-i18n="supervisorDashboard">Supervisor Monitoring</span>
+        </button>
+        <button class="nav-tab owner-only supervisor-only" data-tab="water-growth">
+          <i class="fas fa-vial"></i> <span data-i18n="waterGrowthLogs">Water & Growth Logs</span>
+        </button>
+        <button class="nav-tab owner-only supervisor-only" data-tab="stock">
+          <i class="fas fa-boxes"></i> <span data-i18n="feedStockInventory">Feed Stock Inventory</span>
+        </button>
+        <button class="nav-tab owner-only" data-tab="users">
+          <i class="fas fa-users-cog"></i> <span data-i18n="manageUsers">Manage Users</span>
+        </button>
+        <button class="nav-tab owner-only supervisor-only" data-tab="investments">
+          <i class="fas fa-coins"></i> <span data-i18n="investmentExpenses">Investment & Expenses</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      
+      <!-- ==================== TAB 1: DASHBOARD ==================== -->
+      <section id="tab-dashboard" class="tab-content-section active">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-tachometer-alt" style="color:var(--primary);"></i> Farm Overview Dashboard</h2>
+            <p>Real-time feed tracking, pond culture progress, and operational metrics.</p>
+          </div>
+          <div class="filter-group">
+            <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.exportDataCSV()">
+              <i class="fas fa-file-export"></i> Export CSV
+            </button>
+            <button class="btn btn-primary" onclick="window.AQUA_APP.openAddPondModal()">
+              <i class="fas fa-plus"></i> Add New Pond
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid" id="dashboardTopKpiGrid"></div>
+
+        <div class="content-panel history-panel" id="dashboardHistoryPanel" style="margin-bottom: 2rem;"></div>
+
+        <div class="kpi-grid" id="ownerOpsSummaryCards"></div>
+
+        <div class="content-panel" style="padding:1.25rem; margin-top:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 style="margin:0; color:var(--primary);"><i class="fas fa-chart-line"></i> Investment Report</h3>
+              <p style="margin:0; color:var(--text-secondary);">Automatically calculated from Firestore expense data.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.exportExpenseReportCSV()">
+              <i class="fas fa-file-export"></i> Export Report
+            </button>
+          </div>
+          <div class="kpi-grid" id="investmentReportCards" style="margin-top:1rem;"></div>
+          <div class="kpi-grid" id="expenseCategoryTotals" style="margin-top:1rem;"></div>
+        </div>
+
+        <!-- Ponds Summary Section -->
+        <div style="margin-top:2rem;">
+          <div class="filter-bar">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="pondSearchInput" placeholder="Search pond by ID or Name...">
+            </div>
+            <div class="filter-group">
+              <select id="pondStatusFilter" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="harvested">Harvested</option>
+                <option value="empty">Empty</option>
+              </select>
+              <div class="view-toggle-btns">
+                <button class="view-toggle-btn active" data-view="grid"><i class="fas fa-th-large"></i></button>
+                <button class="view-toggle-btn" data-view="table"><i class="fas fa-list"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div id="pondsGridContainer" class="ponds-grid"></div>
+
+          <div id="pondsTableContainer" class="table-responsive" style="display:none; margin-top:1rem;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Pond ID</th>
+                  <th>Pond Name</th>
+                  <th>Size</th>
+                  <th>DOC</th>
+                  <th>Status</th>
+                  <th>Supervisor</th>
+                  <th>Servant</th>
+                  <th>Today's Feed</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pondsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: POND MANAGEMENT ==================== -->
+      <section id="tab-ponds" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-layer-group" style="color:var(--primary);"></i> Complete Pond Management</h2>
+            <p>Manage all shrimp culture ponds, stocking dates, assigned staff, and culture metrics.</p>
+          </div>
+          <button class="btn btn-primary owner-only" onclick="window.AQUA_APP.openAddPondModal()">
+            <i class="fas fa-plus"></i> Add New Pond
+          </button>
+        </div>
+
+        <div class="ponds-grid" id="pondsManagementGrid"></div>
+      </section>
+
+      <!-- ==================== TAB 3: SERVANT FEEDING PORTAL ==================== -->
+      <section id="tab-servant-feeding" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-hands-helping" style="color:var(--primary);"></i> Servant Workspace Console</h2>
+            <p>Select an assigned pond to update feed schedule, water quality parameters, daily checklists, and alerts.</p>
+          </div>
+        </div>
+
+        <!-- 1. Searchable Pond Deck Selector -->
+        <div class="filter-bar" style="margin-bottom: 1.25rem;">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="servantPondSearch" placeholder="Search assigned ponds by ID or Name...">
+          </div>
+          <div class="filter-group">
+            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600; cursor:pointer;">
+              <input type="checkbox" id="servantOnlyAssigned" checked style="width:16px; height:16px; accent-color:var(--primary);"> Show Only My Assigned Ponds
+            </label>
+          </div>
+        </div>
+
+        <div id="servantPondsGrid" class="ponds-grid" style="margin-bottom: 2rem;"></div>
+
+        <!-- 2. Integrated Operations Console (Hidden by default, shown when pond selected) -->
+        <div id="servantOperationsConsole" class="content-panel" style="display: none; padding: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <span class="pond-id-badge" id="servantActivePondId">P001</span>
+              <h3 style="font-family: var(--font-heading); font-size: 1.45rem; font-weight: 700; color: var(--text-main); margin-top: 0.35rem;" id="servantActivePondName">Pond 1</h3>
+              <p style="font-size: 0.85rem; color: var(--text-muted);" id="servantActivePondDetails">Size: 5 Acres | DOC 67 | Stocked: 2026-05-15</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.clearServantSelection()"><i class="fas fa-arrow-left"></i> Change Pond</button>
+          </div>
+
+          <!-- Quick Parameter Badges -->
+          <div class="grid-two-col" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;" id="servantQuickParameters">
+            <!-- Dynamic parameters updated by JS -->
+          </div>
+
+          <div class="content-panel history-panel" id="servantHistoryPanel" style="margin-bottom: 1.5rem;"></div>
+
+          <div class="kpi-grid" id="servantSummaryCards"></div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-top: 1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+              <div>
+                <h4 style="margin-bottom:0.3rem; color:var(--primary);"><i class="fas fa-receipt"></i> Daily Expenses</h4>
+                <p style="margin:0; color:var(--text-secondary);">Record daily pond expenses and keep totals updated automatically.</p>
+              </div>
+            </div>
+            <form id="servantExpenseForm" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.85rem;">
+              <div class="form-group">
+                <label for="expenseDateInput">Date</label>
+                <input type="date" id="expenseDateInput" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="expensePondSelect">Pond Number</label>
+                <select id="expensePondSelect" class="form-control"></select>
+              </div>
+              <div class="form-group">
+                <label for="expenseCategorySelect">Expense Category</label>
+                <select id="expenseCategorySelect" class="form-control" required>
+                  <option value="Feed Cost">Feed Cost</option>
+                  <option value="Medicine Cost">Medicine Cost</option>
+                  <option value="Seed Cost">Seed Cost</option>
+                  <option value="Power Bill">Power Bill</option>
+                  <option value="Generator Diesel">Generator Diesel</option>
+                  <option value="Labour Cost">Labour Cost</option>
+                  <option value="Maintenance Cost">Maintenance Cost</option>
+                  <option value="Water Treatment Cost">Water Treatment Cost</option>
+                  <option value="Transport Cost">Transport Cost</option>
+                  <option value="Other Expenses">Other Expenses</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expenseDescriptionInput">Description</label>
+                <input type="text" id="expenseDescriptionInput" class="form-control" placeholder="Brief description" required>
+              </div>
+              <div class="form-group">
+                <label for="expenseAmountInput">Amount (₹)</label>
+                <input type="number" step="0.5" min="0" id="expenseAmountInput" class="form-control" placeholder="0.00" required>
+              </div>
+              <div class="form-group full-width">
+                <label for="expenseNotesInput">Notes</label>
+                <textarea id="expenseNotesInput" class="form-control" rows="2" placeholder="Optional notes"></textarea>
+              </div>
+              <div class="form-group full-width" style="display:flex; gap:0.75rem; align-items:center;">
+                <button type="submit" class="btn btn-primary" style="flex:1; max-width:220px;"><i class="fas fa-save"></i> Save Expense</button>
+                <div id="servantExpenseFormMsg" style="color:var(--text-muted); font-size:0.95rem;"></div>
+              </div>
+            </form>
+            <div class="table-responsive" style="margin-top:1rem;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Pond</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Added By</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="servantExpensesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+              <div>
+                <h4 style="margin-bottom:0.3rem; color:var(--primary);"><i class="fas fa-bolt"></i> Urgent Information</h4>
+                <p style="color:var(--text-secondary); margin:0;">Report emergencies instantly for the owner dashboard.</p>
+              </div>
+              <button class="btn btn-danger" id="urgentReportBtn" type="button"><i class="fas fa-exclamation-triangle"></i> Report Urgent Issue</button>
+            </div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary);"><i class="fas fa-fan"></i> Aerators Management</h4>
+            <div id="servantAeratorPanel" class="kpi-grid"></div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary);"><i class="fas fa-boxes"></i> Feed Stock & Daily Operations</h4>
+            <div id="servantStockPanel" class="kpi-grid"></div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary);"><i class="fas fa-fish"></i> Shrimp Count</h4>
+            <div id="servantShrimpPanel" class="kpi-grid"></div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary);"><i class="fas fa-chart-bar"></i> Daily Feed Summary</h4>
+            <div id="servantDailyFeedSummary" class="kpi-grid"></div>
+          </div>
+
+          <div class="content-panel" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary);"><i class="fas fa-coins"></i> Expenses</h4>
+            <form id="servantLegacyExpenseForm" class="form-grid">
+              <div class="form-group">
+                <label for="expenseCategory">Expense Category</label>
+                <select id="expenseCategory" class="form-control">
+                  <option value="Feed Cost">Feed Cost</option>
+                  <option value="Seed Cost">Seed Cost</option>
+                  <option value="Medicine Cost">Medicine Cost</option>
+                  <option value="Power Bill">Power Bill</option>
+                  <option value="Generator Diesel Cost">Generator Diesel Cost</option>
+                  <option value="Generator Maintenance Cost">Generator Maintenance Cost</option>
+                  <option value="Labour/Wages">Labour/Wages</option>
+                  <option value="Pond Maintenance Cost">Pond Maintenance Cost</option>
+                  <option value="Water Pump Cost">Water Pump Cost</option>
+                  <option value="Equipment Repair Cost">Equipment Repair Cost</option>
+                  <option value="Transportation Cost">Transportation Cost</option>
+                  <option value="Ice Cost">Ice Cost</option>
+                  <option value="Water Quality Test Cost">Water Quality Test Cost</option>
+                  <option value="Miscellaneous Expenses">Miscellaneous Expenses</option>
+                  <option value="Other Expenses">Other Expenses</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expenseAmount">Amount (₹)</label>
+                <input type="number" id="expenseAmount" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="expenseDate">Date</label>
+                <input type="date" id="expenseDate" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="expenseTime">Time</label>
+                <input type="time" id="expenseTime" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="expensePond">Pond Number</label>
+                <input type="text" id="expensePond" class="form-control" value="All">
+              </div>
+              <div class="form-group">
+                <label for="expenseDescription">Description</label>
+                <input type="text" id="expenseDescription" class="form-control" placeholder="Enter details">
+              </div>
+              <div class="form-group" style="grid-column:1 / -1;">
+                <label for="expensePhoto">Upload Bill/Invoice Photo (Optional)</label>
+                <input type="file" id="expensePhoto" class="form-control" accept="image/*">
+              </div>
+              <div class="form-group" style="grid-column:1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width:100%;"><i class="fas fa-paper-plane"></i> Submit Expense for Owner Approval</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Console Navigation Subtabs -->
+          <div class="modal-tabs" style="margin-bottom: 1.5rem;">
+            <button class="modal-tab-btn active" data-servanttab="servantTabFeed">Feed Update</button>
+            <button class="modal-tab-btn" data-servanttab="servantTabWQ">Water Quality</button>
+            <button class="modal-tab-btn" data-servanttab="servantTabGrowth">Growth & Mortality</button>
+            <button class="modal-tab-btn" data-servanttab="servantTabChecklist">Daily Checklist</button>
+            <button class="modal-tab-btn" data-servanttab="servantTabLogs">Pond Logs</button>
+          </div>
+
+          <!-- SUB-TAB 1: FEED LOG -->
+          <div id="servantTabFeed" class="servant-tab-content">
+            <form id="servantFeedForm">
+              <div style="margin-top: 0.5rem;">
+                <label style="font-weight: 600; color: var(--text-main);"><i class="far fa-clock"></i> Select Feeding Slot:</label>
+                <div class="slot-selection-grid">
+                  <div class="slot-option-card selected" data-slot="07:00 AM">
+                    <div class="slot-time">7:00 AM</div>
+                    <div class="slot-type">Morning Feed</div>
+                  </div>
+                  <div class="slot-option-card" data-slot="10:00 AM">
+                    <div class="slot-time">10:00 AM</div>
+                    <div class="slot-type">Mid-Morning</div>
+                  </div>
+                  <div class="slot-option-card" data-slot="01:00 PM">
+                    <div class="slot-time">1:00 PM</div>
+                    <div class="slot-type">Afternoon</div>
+                  </div>
+                  <div class="slot-option-card" data-slot="04:00 PM">
+                    <div class="slot-time">4:00 PM</div>
+                    <div class="slot-type">Evening Feed</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="form-group">
+                  <label for="servantFeedQty"><i class="fas fa-weight-hanging"></i> Feed Quantity (KG):</label>
+                  <input type="number" step="0.5" id="servantFeedQty" class="form-control" placeholder="e.g. 35.0" required style="font-size: 1.1rem; font-weight: 700;">
+                </div>
+                <div class="form-group">
+                  <label for="servantFeedType"><i class="fas fa-box"></i> Feed Type / Code:</label>
+                  <select id="servantFeedType" class="form-control">
+                    <option value="Vannamei Starter #2">Vannamei Starter #2</option>
+                    <option value="Vannamei Grower #3" selected>Vannamei Grower #3</option>
+                    <option value="Vannamei Finisher #4">Vannamei Finisher #4</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top: 1.5rem;">
+                <label style="font-weight: 600; color: var(--text-main);"><i class="fas fa-tasks"></i> Feed Tray Consumption Status (Check Times: 8:30 AM / 11:30 AM / 2:30 PM / 5:30 PM):</label>
+                <div class="consumption-options-grid">
+                  <div class="consumption-option-btn selected" data-val="100% Consumed">
+                    <span class="percent-text">100%</span>
+                    <span class="desc-text">Fully Consumed</span>
+                  </div>
+                  <div class="consumption-option-btn" data-val="75% Consumed">
+                    <span class="percent-text">75%</span>
+                    <span class="desc-text">Slight Leftover</span>
+                  </div>
+                  <div class="consumption-option-btn" data-val="50% Remaining">
+                    <span class="percent-text">50%</span>
+                    <span class="desc-text">Half Remaining</span>
+                  </div>
+                  <div class="consumption-option-btn" data-val="Not Consumed">
+                    <span class="percent-text">0%</span>
+                    <span class="desc-text">Not Consumed</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid" style="margin-top: 1.25rem;">
+                <div class="form-group">
+                  <label for="servantNameInput"><i class="fas fa-user-edit"></i> Servant Name:</label>
+                  <input type="text" id="servantNameInput" class="form-control" value="Ramu" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantNotes"><i class="far fa-comment-alt"></i> Field Notes / Remarks:</label>
+                  <input type="text" id="servantNotes" class="form-control" placeholder="Optional notes e.g., tray clean, shrimp molting...">
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 0.9rem; font-size: 1.05rem;">
+                <i class="fas fa-paper-plane"></i> Submit Feed Record
+              </button>
+            </form>
+          </div>
+
+          <!-- SUB-TAB 2: WATER QUALITY -->
+          <div id="servantTabWQ" class="servant-tab-content" style="display: none;">
+            <form id="servantWQForm">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="servantPhInput">pH Level (Ideal: 7.5 - 8.5):</label>
+                  <input type="number" step="0.1" id="servantPhInput" class="form-control" value="7.8" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantDoInput">DO - Dissolved Oxygen (ppm, Ideal: > 4.0):</label>
+                  <input type="number" step="0.1" id="servantDoInput" class="form-control" value="6.0" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantSalinityInput">Salinity (ppt):</label>
+                  <input type="number" step="1" id="servantSalinityInput" class="form-control" value="22" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantTempInput">Temperature (°C):</label>
+                  <input type="number" step="0.5" id="servantTempInput" class="form-control" value="28.5" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantTransInput">Transparency (cm):</label>
+                  <input type="number" step="1" id="servantTransInput" class="form-control" value="35" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantAmmoniaInput">Ammonia (mg/L):</label>
+                  <input type="number" step="0.01" id="servantAmmoniaInput" class="form-control" value="0.04" required>
+                </div>
+                <div class="form-group">
+                  <label for="servantNitrateInput">Nitrate (mg/L):</label>
+                  <input type="number" step="0.1" id="servantNitrateInput" class="form-control" value="4.5" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 0.9rem;">
+                <i class="fas fa-save"></i> Save Water Quality Log
+              </button>
+            </form>
+          </div>
+
+          <!-- SUB-TAB 3: GROWTH & MORTALITY -->
+          <div id="servantTabGrowth" class="servant-tab-content" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; flex-wrap: wrap;">
+              <form id="servantGrowthForm" class="panel-soft" style="padding: 1.25rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-chart-line"></i> Growth Weight Sampling</h4>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantAbwInput">Average Body Weight (ABW in grams):</label>
+                  <input type="number" step="0.1" id="servantAbwInput" class="form-control" value="18.5" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantSurvivalRate">Estimated Survival Rate (%):</label>
+                  <input type="number" step="1" id="servantSurvivalRate" class="form-control" value="85" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantWeeklyGrowth">Weekly Growth (grams):</label>
+                  <input type="number" step="0.1" id="servantWeeklyGrowth" class="form-control" value="2.2" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Save Growth Data</button>
+              </form>
+
+              <form id="servantMortalityForm" class="panel-soft" style="padding: 1.25rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--accent-rose);"><i class="fas fa-skull"></i> Record Mortality Event</h4>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantMortalityCount">Mortality Shrimp Count:</label>
+                  <input type="number" step="1" id="servantMortalityCount" class="form-control" placeholder="e.g. 15" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantMortalityCause">Suspected Cause:</label>
+                  <select id="servantMortalityCause" class="form-control">
+                    <option value="Normal / Shedding">Normal / Shedding</option>
+                    <option value="Low Dissolved Oxygen">Low Dissolved Oxygen</option>
+                    <option value="Temperature Stress">Temperature Stress</option>
+                    <option value="Suspected Infection">Suspected Infection</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <label for="servantMortalityNotes">Remarks / Actions Taken:</label>
+                  <input type="text" id="servantMortalityNotes" class="form-control" placeholder="e.g. Cleared water margin, adjusted aerators">
+                </div>
+                <button type="submit" class="btn btn-danger" style="width: 100%; margin-top: 1rem;">Record Mortality</button>
+              </form>
+            </div>
+
+            <form id="shrimpCountForm" class="panel-soft" style="padding: 1.25rem; margin-top: 1rem;">
+              <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-fish"></i> Update Shrimp Count</h4>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="shrimpCountInput">Current Shrimp Count:</label>
+                  <input type="number" step="100" id="shrimpCountInput" class="form-control" placeholder="e.g. 420000" required>
+                </div>
+                <div class="form-group">
+                  <label for="shrimpCountNoteInput">Remarks:</label>
+                  <input type="text" id="shrimpCountNoteInput" class="form-control" placeholder="e.g. Stocking count updated">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Save Shrimp Count</button>
+            </form>
+          </div>
+
+          <!-- SUB-TAB 4: DAILY CHECKLIST & OBSERVATION -->
+          <div id="servantTabChecklist" class="servant-tab-content" style="display: none;">
+            <form id="servantChecklistForm">
+              <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-clipboard-check"></i> Daily Operational Checkpoints</h4>
+              
+              <div style="display: grid; gap: 0.85rem; margin-bottom: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; cursor: pointer;">
+                  <input type="checkbox" name="chkAerators" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                  <span>Aerators checked & fully functional</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; cursor: pointer;">
+                  <input type="checkbox" name="chkTrays" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                  <span>Feeding check trays inspected for leftovers</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; cursor: pointer;">
+                  <input type="checkbox" name="chkMortality" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                  <span>Pond margins inspected and dead shrimp cleared</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; cursor: pointer;">
+                  <input type="checkbox" name="chkFencing" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                  <span>Bird netting & crab fencing checked for gaps</span>
+                </label>
+              </div>
+
+              <div class="form-group">
+                <label for="servantObsText">Daily Pond Observation / Water Color Changes:</label>
+                <textarea id="servantObsText" class="form-control" placeholder="Enter any abnormal colors, behavior, or comments..." style="min-height: 80px;"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 0.9rem;">
+                <i class="fas fa-check-double"></i> Save Checklist & Observation
+              </button>
+            </form>
+          </div>
+
+          <!-- SUB-TAB 5: HISTORY LOGS & ALERTS -->
+          <div id="servantTabLogs" class="servant-tab-content" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; flex-wrap: wrap;">
+              <div>
+                <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-utensils"></i> Feed History</h4>
+                <div class="table-responsive" style="max-height: 250px;">
+                  <table class="data-table">
+                    <thead><tr><th>Time</th><th>Qty</th><th>Status</th></tr></thead>
+                    <tbody id="servantPondFeedHistory"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h4 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-vial"></i> Water History</h4>
+                <div class="table-responsive" style="max-height: 250px;">
+                  <table class="data-table">
+                    <thead><tr><th>Date</th><th>pH</th><th>DO</th><th>Temp</th><th>Ammonia</th><th>Nitrate</th></tr></thead>
+                    <tbody id="servantPondWaterHistory"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================== TAB 4: SUPERVISOR MONITORING ==================== -->
+      <section id="tab-supervisor" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-clipboard-list" style="color:var(--primary);"></i> Supervisor Operational Center</h2>
+            <p>Monitor real-time feed updates, tray consumption anomalies, and pending pond tasks.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+          <div>
+            <h3 style="font-family:var(--font-heading); margin-bottom:1rem; color:var(--text-main);"><i class="fas fa-stream"></i> Real-time Feed Activity Feed</h3>
+            <div id="supervisorFeedActivity"></div>
+          </div>
+
+          <div>
+            <h3 style="font-family:var(--font-heading); margin-bottom:1rem; color:var(--text);"><i class="fas fa-exclamation-circle" style="color:var(--accent-amber);"></i> Pending Pond Feed Schedule</h3>
+            <div class="panel-soft" style="padding:1.25rem;">
+              <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1rem;">
+                Ponds pending feed entries:
+              </p>
+              <div id="pendingPondsList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-panel history-panel" id="supervisorHistoryPanel" style="margin-top: 1.5rem;"></div>
+      </section>
+
+      <!-- ==================== TAB 5: WATER & GROWTH LOGS ==================== -->
+      <section id="tab-water-growth" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-vial" style="color:var(--primary);"></i> Water Quality & Growth Tracking</h2>
+            <p>Maintain optimal pH, Dissolved Oxygen (DO), Salinity, and track Average Body Weight (ABW).</p>
+          </div>
+          <button class="btn btn-primary" onclick="window.AQUA_APP.openWQModal()">
+            <i class="fas fa-plus"></i> Record Water Quality
+          </button>
+        </div>
+
+        <h3 style="font-family:var(--font-heading); margin-bottom:1rem; color:var(--text-main);">Water Quality Parameters Log</h3>
+        <div class="table-responsive" style="margin-bottom:2rem;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pond ID</th>
+                <th>Date & Time</th>
+                <th>pH</th>
+                <th>DO (ppm)</th>
+                <th>Salinity (ppt)</th>
+                <th>Temperature (°C)</th>
+                <th>Transparency (cm)</th>
+                <th>Ammonia (mg/L)</th>
+                <th>Nitrate (mg/L)</th>
+                <th>Entered By</th>
+              </tr>
+            </thead>
+            <tbody id="waterQualityTableBody"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-family:var(--font-heading); margin-bottom:1rem; color:var(--text-main);">Shrimp Growth & Survival Sampling Log</h3>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pond ID</th>
+                <th>DOC</th>
+                <th>Average Body Weight (ABW)</th>
+                <th>Weekly Growth</th>
+                <th>Survival Rate (%)</th>
+                <th>Total Biomass (KG)</th>
+                <th>Sampling Date</th>
+              </tr>
+            </thead>
+            <tbody id="growthTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 6: USER MANAGEMENT ==================== -->
+      <section id="tab-users" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-users-cog" style="color:var(--primary);"></i> User Management</h2>
+            <p>Owner controls for user accounts, roles, passwords, status, and audit history.</p>
+          </div>
+          <div class="filter-group">
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.exportUsersCSV()">
+              <i class="fas fa-file-export"></i> Export Users
+            </button>
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.refreshUsers()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-primary owner-only" onclick="window.AQUA_APP.openUserModal()">
+              <i class="fas fa-user-plus"></i> Add User
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-bar" style="margin-bottom: 1rem;">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="userSearchInput" placeholder="Search by name, user ID, mobile, role, pond, status...">
+          </div>
+          <div class="filter-group">
+            <select id="userRoleFilter" class="filter-select">
+              <option value="all">All Roles</option>
+              <option value="owner">Owner</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="servant">Servant</option>
+            </select>
+            <select id="userStatusFilter" class="filter-select">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="content-panel" style="padding: 1.25rem;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Full Name</th>
+                  <th>Role</th>
+                  <th>Mobile</th>
+                  <th>Username</th>
+                  <th>Status</th>
+                  <th>Date Created</th>
+                  <th>Last Login</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 7: INVESTMENT & EXPENSES ==================== -->
+      <section id="tab-investments" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-coins" style="color:var(--primary);"></i> Investment & Expense Management</h2>
+            <p>Track farm spending, approve servant submissions, and monitor investment growth.</p>
+          </div>
+          <button class="btn btn-primary owner-only" onclick="window.AQUA_APP.openInvestmentModal()">
+            <i class="fas fa-plus"></i> Add Investment
+          </button>
+        </div>
+
+        <div class="kpi-grid" id="investmentSummaryCards"></div>
+
+        <div class="content-panel" style="padding:1.25rem; margin-top:1.5rem;">
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem; align-items:center; margin-bottom:1rem;">
+            <h3 style="margin:0; color:var(--primary);"><i class="fas fa-receipt"></i> Expense Approvals</h3>
+            <div class="filter-group">
+              <select id="expenseStatusFilter" class="filter-select">
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Pond</th>
+                  <th>Submitted By</th>
+                  <th>Status</th>
+                  <th>Description</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expensesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 8: FEED STOCK INVENTORY ==================== -->
+      <section id="tab-stock" class="tab-content-section">
+        <div class="page-header">
+          <div class="page-title">
+            <h2><i class="fas fa-boxes" style="color:var(--primary);"></i> Feed Stock Management</h2>
+            <p>Track remaining feed bags in storehouse and low stock alerts.</p>
+          </div>
+        </div>
+
+        <div id="stockGridContainer" class="kpi-grid"></div>
+
+        <div class="content-panel" style="padding: 1.25rem; margin-top: 1.5rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-box-open"></i> Feed Stock Update</h3>
+          <form id="feedStockForm" class="form-grid">
+            <div class="form-group">
+              <label for="feedStockSelect">Feed Product</label>
+              <select id="feedStockSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="feedStockBagsInput">Bags in Stock</label>
+              <input type="number" step="1" id="feedStockBagsInput" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="feedStockKgPerBagInput">Kg Per Bag</label>
+              <input type="number" step="1" id="feedStockKgPerBagInput" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="feedStockAlertInput">Alert Level (Bags)</label>
+              <input type="number" step="1" id="feedStockAlertInput" class="form-control" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Update Feed Stock</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="content-panel" style="padding: 1.25rem; margin-top: 1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom: 1rem;">
+            <h3 style="margin:0; color: var(--primary);"><i class="fas fa-history"></i> Edit History</h3>
+            <span class="status-pill active">Permanent audit trail</span>
+          </div>
+          <div class="filter-bar" style="margin-bottom: 1rem; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="editHistoryPondFilter" placeholder="Filter by pond..."></div>
+            <div class="search-box">
+              <i class="fas fa-user"></i>
+              <input type="text" id="editHistoryUserFilter" placeholder="Filter by user..."></div>
+            <div class="search-box">
+              <i class="fas fa-user-tag"></i>
+              <input type="text" id="editHistoryRoleFilter" placeholder="Filter by role..."></div>
+            <div class="search-box">
+              <i class="fas fa-calendar"></i>
+              <input type="date" id="editHistoryDateFilter"></div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Pond</th>
+                  <th>Field</th>
+                  <th>Changed By</th>
+                  <th>Role</th>
+                  <th>Old Value</th>
+                  <th>New Value</th>
+                </tr>
+              </thead>
+              <tbody id="editHistoryTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODALS SYSTEM ==================== -->
+
+  <!-- Add / Edit Pond Modal -->
+  <div id="pondFormModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:650px;">
+      <div class="modal-header">
+        <h3 id="pondFormTitle"><i class="fas fa-water"></i> Add New Pond</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <form id="pondForm">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="pondIdInput">Pond ID (Auto Generated):</label>
+              <input type="text" id="pondIdInput" class="form-control" readonly style="font-weight:700; color:var(--primary);">
+            </div>
+            <div class="form-group">
+              <label for="pondNameInput">Pond Name:</label>
+              <input type="text" id="pondNameInput" class="form-control" placeholder="e.g. Pond 4" required>
+            </div>
+            <div class="form-group">
+              <label for="pondSizeInput">Pond Size (Acres):</label>
+              <input type="number" step="0.5" id="pondSizeInput" class="form-control" value="5.0" required>
+            </div>
+            <div class="form-group">
+              <label for="stockingDateInput">Stocking Date:</label>
+              <input type="date" id="stockingDateInput" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="pondStatusSelect">Pond Status:</label>
+              <select id="pondStatusSelect" class="form-control">
+                <option value="Active">Active</option>
+                <option value="Harvested">Harvested</option>
+                <option value="Empty">Empty</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="supervisorInput">Assigned Supervisor:</label>
+              <input type="text" id="supervisorInput" class="form-control" value="Rajesh Kumar">
+            </div>
+            <div class="form-group">
+              <label for="servantInput">Assigned Servant:</label>
+              <input type="text" id="servantInput" class="form-control" value="Ramu">
+            </div>
+            <div class="form-group full-width">
+              <label for="pondRemarksInput">Remarks / Notes:</label>
+              <textarea id="pondRemarksInput" class="form-control" placeholder="Aeration setup, seed density..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Pond Details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Detailed Pond Modal -->
+  <div id="pondDetailsModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalPondTitle"><i class="fas fa-chart-line"></i> Pond Details</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" data-subtab="tabFeedHistory">Feed History</button>
+          <button class="modal-tab-btn" data-subtab="tabWaterQuality">Water Quality</button>
+          <button class="modal-tab-btn" data-subtab="tabGrowth">Growth & Biomass</button>
+          <button class="modal-tab-btn" data-subtab="tabDailyNotes">Daily Notes</button>
+        </div>
+
+        <div id="tabFeedHistory" class="modal-subtab-content"></div>
+        <div id="tabWaterQuality" class="modal-subtab-content" style="display:none;"></div>
+        <div id="tabGrowth" class="modal-subtab-content" style="display:none;"></div>
+        <div id="tabDailyNotes" class="modal-subtab-content" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Water Quality Entry Modal -->
+  <div id="wqModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:600px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-vial"></i> Record Water Quality</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <form id="wqForm">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="wqPondSelect">Select Pond:</label>
+              <select id="wqPondSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="wqPhInput">pH Level (Ideal: 7.5 - 8.5):</label>
+              <input type="number" step="0.1" id="wqPhInput" class="form-control" value="7.8" required>
+            </div>
+            <div class="form-group">
+              <label for="wqDoInput">DO - Dissolved Oxygen (ppm):</label>
+              <input type="number" step="0.1" id="wqDoInput" class="form-control" value="6.0" required>
+            </div>
+            <div class="form-group">
+              <label for="wqSalinityInput">Salinity (ppt):</label>
+              <input type="number" step="1" id="wqSalinityInput" class="form-control" value="22" required>
+            </div>
+            <div class="form-group">
+              <label for="wqTempInput">Temperature (°C):</label>
+              <input type="number" step="0.5" id="wqTempInput" class="form-control" value="28.5" required>
+            </div>
+            <div class="form-group">
+              <label for="wqTransInput">Water Transparency (cm):</label>
+              <input type="number" step="1" id="wqTransInput" class="form-control" value="35" required>
+            </div>
+            <div class="form-group">
+              <label for="wqAmmoniaInput">Ammonia (mg/L):</label>
+              <input type="number" step="0.01" id="wqAmmoniaInput" class="form-control" value="0.04" required>
+            </div>
+            <div class="form-group">
+              <label for="wqNitrateInput">Nitrate (mg/L):</label>
+              <input type="number" step="0.1" id="wqNitrateInput" class="form-control" value="4.5" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save WQ Log</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Urgent Report Modal -->
+  <div id="urgentReportModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:600px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-exclamation-triangle"></i> Report Urgent Issue</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="urgentReportForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="urgentPondId">Pond Number</label>
+              <input type="text" id="urgentPondId" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label for="urgentServantName">Servant Name</label>
+              <input type="text" id="urgentServantName" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:1rem;">
+            <label for="urgentTypeSelect">Emergency Type</label>
+            <select id="urgentTypeSelect" class="form-control" required>
+              <option value="Aerator Failure">Aerator Failure</option>
+              <option value="Low Oxygen">Low Oxygen</option>
+              <option value="Disease Symptoms">Disease Symptoms</option>
+              <option value="High Mortality">High Mortality</option>
+              <option value="Feed Shortage">Feed Shortage</option>
+              <option value="Water Quality Problems">Water Quality Problems</option>
+              <option value="Power Failure">Power Failure</option>
+              <option value="Pump Failure">Pump Failure</option>
+              <option value="Heavy Rain Alert">Heavy Rain Alert</option>
+              <option value="Other Emergency">Other Emergency</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-top:1rem;">
+            <label for="urgentDescription">Description</label>
+            <textarea id="urgentDescription" class="form-control" rows="4" placeholder="Describe the issue in detail..." required></textarea>
+          </div>
+          <div class="form-group" style="margin-top:1rem;">
+            <label for="urgentPhotoInput">Upload Photo (optional)</label>
+            <input type="file" id="urgentPhotoInput" class="form-control" accept="image/*">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-danger">Send Urgent Alert</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Setup Modal -->
+  <div id="firebaseConfigModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:600px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-fire" style="color:#f59e0b;"></i> Firebase Firestore Setup</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <form id="firebaseConfigForm">
+        <div class="modal-body">
+          <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:1rem;">
+            To sync pond data live with Firebase Firestore across multiple mobile devices:
+          </p>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label for="fbApiKey">Firebase API Key:</label>
+            <input type="text" id="fbApiKey" class="form-control" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label for="fbProjectId">Project ID:</label>
+            <input type="text" id="fbProjectId" class="form-control" placeholder="aqua-farming">
+          </div>
+          <div class="form-group">
+            <label for="fbAppId">App ID:</label>
+            <input type="text" id="fbAppId" class="form-control" placeholder="1:1234567890:web:abcdef">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-plug"></i> Save & Connect Firebase</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Investment Modal -->
+  <div id="investmentModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-coins"></i> Investment Entry</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="investmentForm" class="form-grid">
+          <div class="form-group">
+            <label for="investmentCategory">Category</label>
+            <select id="investmentCategory" class="form-control">
+              <option value="Feed Cost">Feed Cost</option>
+              <option value="Medicine Cost">Medicine Cost</option>
+              <option value="Seed Cost">Seed Cost</option>
+              <option value="Power Bill">Power Bill</option>
+              <option value="Generator Diesel">Generator Diesel</option>
+              <option value="Labour Cost">Labour Cost</option>
+              <option value="Maintenance Cost">Maintenance Cost</option>
+              <option value="Water Treatment Cost">Water Treatment Cost</option>
+              <option value="Transport Cost">Transport Cost</option>
+              <option value="Other Expenses">Other Expenses</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="investmentStatus">Status</label>
+            <select id="investmentStatus" class="form-control">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="investmentAmount">Amount (₹)</label>
+            <input type="number" id="investmentAmount" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="investmentDate">Date</label>
+            <input type="date" id="investmentDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="investmentTime">Time</label>
+            <input type="time" id="investmentTime" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="investmentPond">Pond Number</label>
+            <input type="text" id="investmentPond" class="form-control" value="All">
+          </div>
+          <div class="form-group">
+            <label for="investmentDescription">Description</label>
+            <input type="text" id="investmentDescription" class="form-control">
+          </div>
+          <div class="form-group" style="grid-column:1 / -1;">
+            <label for="investmentNotes">Notes</label>
+            <textarea id="investmentNotes" class="form-control" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary" form="investmentForm">Save Investment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Management Modal -->
+  <div id="userManagementModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-users-cog"></i> Manage User</h3>
+        <button class="close-modal-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="userManagementForm" class="form-grid">
+          <div class="form-group">
+            <label for="userFormUserId">User ID</label>
+            <input type="text" id="userFormUserId" class="form-control" placeholder="Leave blank to auto-generate">
+          </div>
+          <div class="form-group">
+            <label for="userFormName">Full Name</label>
+            <input type="text" id="userFormName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="userFormMobile">Mobile Number</label>
+            <input type="text" id="userFormMobile" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="userFormUsername">Username</label>
+            <input type="text" id="userFormUsername" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="userFormEmail">Email</label>
+            <input type="email" id="userFormEmail" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="userFormRole">Role</label>
+            <select id="userFormRole" class="form-control">
+              <option value="owner">Owner</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="servant">Servant</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="userFormAssignedPonds">Assigned Ponds</label>
+            <input type="text" id="userFormAssignedPonds" class="form-control" placeholder="P001, P002">
+          </div>
+          <div class="form-group">
+            <label for="userFormPhoto">Profile Photo URL</label>
+            <input type="text" id="userFormPhoto" class="form-control" placeholder="https://..."></div>
+          <div class="form-group">
+            <label for="userFormStatus">Status</label>
+            <select id="userFormStatus" class="form-control">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="userFormPassword">New Password</label>
+            <input type="password" id="userFormPassword" class="form-control" placeholder="Optional">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="userFormForceChange"> Force password change on next login</label>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="userFormNotes">Notes</label>
+            <textarea id="userFormNotes" class="form-control" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="userFormSubmitBtn" form="userManagementForm">Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- App Main Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/user-management-utils.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('📱 PWA ServiceWorker Registered:', reg.scope))
+          .catch(err => console.log('PWA ServiceWorker failed:', err));
+      });
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('installPwaBtn');
+      if (btn) btn.style.display = 'inline-flex';
+    });
+
+    document.getElementById('installPwaBtn')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User prompt outcome: ${outcome}`);
+        deferredPrompt = null;
+      }
+    });
+  </script>
+
+</body>
+</html>
