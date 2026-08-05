@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: aqua-farming
+    env: node
+    plan: free
+    branch: main
+    root: .
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
