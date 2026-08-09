@@ -69,11 +69,12 @@ function validatePasswordStrength(password) {
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
   
-  const strength = [minLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
-  
+  const passedChecks = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+  const strength = passedChecks <= 1 ? 'Weak' : passedChecks === 2 ? 'Medium' : 'Strong';
+
   return {
-    isValid: minLength && hasUppercase && hasLowercase && hasNumber && hasSpecial,
-    strength: strength <= 2 ? 'Weak' : strength <= 4 ? 'Medium' : 'Strong',
+    isValid: minLength && hasUppercase && hasLowercase && (hasNumber || hasSpecial),
+    strength,
     details: {
       minLength,
       hasUppercase,
@@ -87,6 +88,7 @@ function validatePasswordStrength(password) {
 // In-Memory Pre-seeded Users for Out-of-the-box instant running
 const seedUsers = [
   { username: 'manthena', userId: 'A7#d2!', passwordHash: bcrypt.hashSync('owner123', 8), name: 'Bhatraju Raju', email: 'owner@aquafarm.io', role: 'owner' },
+  { username: 'giri', userId: 'G1r!23', passwordHash: bcrypt.hashSync('owner@123', 8), name: 'Giri', email: 'giri@aquafarm.io', role: 'owner' },
   { username: 'rajesh', userId: 'k9@P4$', passwordHash: bcrypt.hashSync('super123', 8), name: 'Rajesh Kumar', email: 'rajesh@aquafarm.io', role: 'supervisor' },
   { username: 'ramu', userId: 'M&5xQ1', passwordHash: bcrypt.hashSync('servant123', 8), name: 'Ramu', email: 'ramu@aquafarm.io', role: 'servant' }
 ];
@@ -245,34 +247,40 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    // Check if password is already used (with a tolerance for dev/test)
-    const hashedPassword = bcrypt.hashSync(password, 8);
-    const passwordIsUsed = seedUsers.some(u => bcrypt.compareSync(password, u.passwordHash));
-    if (passwordIsUsed) {
-      return res.status(400).json({ 
-        message: 'This password is already taken by another user. Please choose a different password.' 
-      });
+    // Check if password is already used by any existing user (disallow reuse)
+    const allUsers = isMongoReady() ? await User.find({}).lean() : inMemoryUsers;
+    for (const u of allUsers) {
+      const hashed = u.password || u.passwordHash || '';
+      try {
+        if (hashed && bcrypt.compareSync(password, hashed)) {
+          return res.status(400).json({ 
+            message: 'This password is already taken by another user. Please choose a different password.' 
+          });
+        }
+      } catch (e) {
+        // ignore malformed hashes
+      }
     }
 
     // Generate unique User ID
     const userId = await generateUniqueUserId();
 
-    // Create new user
+    // Create new user (password provided by the registering user)
     const newUser = new User({
       userId,
       username: username.toLowerCase().trim(),
       email: email.toLowerCase().trim(),
       name: name.trim(),
       mobileNumber: mobileNumber || '',
-      password: hashedPassword,
+      password: bcrypt.hashSync(password, 8),
       role: 'servant', // Default role
       registrationDate: new Date()
     });
 
     await newUser.save();
 
-    // Add password to used set
-    usedPasswords.add(hashedPassword);
+    // (Optional) Track used password hashes in memory for quick checks
+    try { usedPasswords.add(newUser.password); } catch (e) {}
 
     // Create JWT token
     const token = jwt.sign(
@@ -536,13 +544,15 @@ router.post('/users', async (req, res) => {
     }
 
     const { userId: requestedUserId, name, email, mobileNumber, username, password, role, assignedPonds, profilePhoto, accountNotes, forcePasswordChange, isActive } = req.body;
-    if (!name || !email || !username || !password) {
-      return res.status(400).json({ message: 'Name, email, username, and password are required.' });
+    if (!name || !email || !username) {
+      return res.status(400).json({ message: 'Name, email and username are required.' });
     }
 
     const normalizedUsername = username.toLowerCase().trim();
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUserId = String(requestedUserId || '').trim();
+    const cleanPassword = typeof password === 'string' ? password.trim() : '';
+    const shouldForcePasswordChange = Boolean(forcePasswordChange);
 
     if (!isMongoReady()) {
       const existing = getMemoryUserByQuery({ username: normalizedUsername, email: normalizedEmail });
@@ -557,9 +567,23 @@ router.post('/users', async (req, res) => {
         }
       }
 
-      const passwordStrength = validatePasswordStrength(password);
-      if (!passwordStrength.isValid) {
-        return res.status(400).json({ message: 'Password does not meet strength requirements.' });
+      let finalPasswordHash;
+      let resetToken = null;
+      let resetTokenExpiry = null;
+      let forceReset = shouldForcePasswordChange;
+
+      if (cleanPassword) {
+        const passwordStrength = validatePasswordStrength(cleanPassword);
+        if (!passwordStrength.isValid) {
+          return res.status(400).json({ message: 'Password does not meet strength requirements.', requirements: passwordStrength.details });
+        }
+        finalPasswordHash = bcrypt.hashSync(cleanPassword, 8);
+      } else {
+        const tempPassword = crypto.randomBytes(8).toString('hex');
+        finalPasswordHash = bcrypt.hashSync(tempPassword, 8);
+        resetToken = crypto.randomBytes(32).toString('hex');
+        resetTokenExpiry = new Date(Date.now() + 24 * 3600000);
+        forceReset = true;
       }
 
       const userId = normalizedUserId || await generateUniqueUserId();
@@ -570,12 +594,14 @@ router.post('/users', async (req, res) => {
         email: normalizedEmail,
         name: name.trim(),
         mobileNumber: mobileNumber || '',
-        password: bcrypt.hashSync(password, 8),
+        password: finalPasswordHash,
         role: String(role || 'servant').toLowerCase(),
         assignedPonds: Array.isArray(assignedPonds) ? assignedPonds : (assignedPonds ? String(assignedPonds).split(',').map(p => p.trim()).filter(Boolean) : []),
         profilePhoto: profilePhoto || '',
         accountNotes: accountNotes || '',
-        forcePasswordChange: Boolean(forcePasswordChange),
+        forcePasswordChange: forceReset,
+        resetToken,
+        resetTokenExpiry,
         isActive: isActive !== false,
         isSuspended: false,
         registrationDate: new Date(),
@@ -584,6 +610,9 @@ router.post('/users', async (req, res) => {
       };
 
       inMemoryUsers.unshift(newUser);
+      if (resetToken) {
+        console.log(`Invite/Reset link for ${normalizedEmail}: /reset-password?token=${resetToken}`);
+      }
       res.status(201).json({ message: 'User created successfully.', user: sanitizeUser(newUser) });
       return;
     }
@@ -600,9 +629,23 @@ router.post('/users', async (req, res) => {
       }
     }
 
-    const passwordStrength = validatePasswordStrength(password);
-    if (!passwordStrength.isValid) {
-      return res.status(400).json({ message: 'Password does not meet strength requirements.' });
+    let finalPasswordHash;
+    let resetToken = null;
+    let resetTokenExpiry = null;
+    let forceReset = shouldForcePasswordChange;
+
+    if (cleanPassword) {
+      const passwordStrength = validatePasswordStrength(cleanPassword);
+      if (!passwordStrength.isValid) {
+        return res.status(400).json({ message: 'Password does not meet strength requirements.', requirements: passwordStrength.details });
+      }
+      finalPasswordHash = bcrypt.hashSync(cleanPassword, 8);
+    } else {
+      const tempPassword = crypto.randomBytes(8).toString('hex');
+      finalPasswordHash = bcrypt.hashSync(tempPassword, 8);
+      resetToken = crypto.randomBytes(32).toString('hex');
+      resetTokenExpiry = new Date(Date.now() + 24 * 3600000);
+      forceReset = true;
     }
 
     const userId = normalizedUserId || await generateUniqueUserId();
@@ -612,18 +655,23 @@ router.post('/users', async (req, res) => {
       email: normalizedEmail,
       name: name.trim(),
       mobileNumber: mobileNumber || '',
-      password: bcrypt.hashSync(password, 8),
+      password: finalPasswordHash,
       role: String(role || 'servant').toLowerCase(),
       assignedPonds: Array.isArray(assignedPonds) ? assignedPonds : (assignedPonds ? String(assignedPonds).split(',').map(p => p.trim()).filter(Boolean) : []),
       profilePhoto: profilePhoto || '',
       accountNotes: accountNotes || '',
-      forcePasswordChange: Boolean(forcePasswordChange),
+      forcePasswordChange: forceReset,
+      resetToken,
+      resetTokenExpiry,
       isActive: isActive !== false,
       isSuspended: false,
       registrationDate: new Date()
     });
 
     await newUser.save();
+    if (resetToken) {
+      console.log(`Invite/Reset link for ${normalizedEmail}: /reset-password?token=${resetToken}`);
+    }
     const { password: _password, ...safeUser } = newUser.toObject();
     res.status(201).json({ message: 'User created successfully.', user: safeUser });
   } catch (err) {

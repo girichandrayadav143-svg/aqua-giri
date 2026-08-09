@@ -26,11 +26,11 @@ function validatePasswordStrength(password) {
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
 
-  const passedChecks = [minLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
-  const strength = passedChecks <= 2 ? 'Weak' : passedChecks <= 4 ? 'Medium' : 'Strong';
+  const passedChecks = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+  const strength = passedChecks <= 1 ? 'Weak' : passedChecks === 2 ? 'Medium' : 'Strong';
 
   return {
-    isValid: minLength && hasUppercase && hasLowercase && hasNumber && hasSpecial,
+    isValid: minLength && hasUppercase && hasLowercase && (hasNumber || hasSpecial),
     strength,
     details: { minLength, hasUppercase, hasLowercase, hasNumber, hasSpecial }
   };

@@ -3,7 +3,7 @@
  * Frontend Handler for User Registration, Login, and Password Management
  */
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = window.location.origin + '/api';
 
 // ==================== UTILITY FUNCTIONS ====================
 
@@ -451,10 +451,4 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('credential').value = rememberCredential;
     document.getElementById('rememberMe').checked = true;
   }
-
-  // Demo seed user info (for testing)
-  console.log('Demo Users Available:');
-  console.log('Owner - User ID: A7#d2! or Username: manthena | Password: owner123');
-  console.log('Supervisor - User ID: k9@P4$ or Username: rajesh | Password: super123');
-  console.log('Servant - User ID: M&5xQ1 or Username: ramu | Password: servant123');
 });

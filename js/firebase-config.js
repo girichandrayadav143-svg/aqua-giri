@@ -16,12 +16,6 @@ window.AQUA_STORAGE = (function() {
   const STORAGE_KEY_EDIT_HISTORY = 'manthena_aqua_edit_history_v1';
   const STORAGE_KEY_CONFIG = 'manthena_aqua_firebase_cfg';
   const STORAGE_KEY_SERVANT_PANELS = 'manthena_aqua_servant_panels_v1';
-  const STORAGE_KEY_AERATORS = 'manthena_aqua_aerators_v1';
-  const STORAGE_KEY_FEED_STOCK = 'manthena_aqua_feed_stock_dashboard_v1';
-  const STORAGE_KEY_SHRIMP_COUNT = 'manthena_aqua_shrimp_count_v1';
-  const STORAGE_KEY_FEED_SUMMARY = 'manthena_aqua_feed_summary_v1';
-  const STORAGE_KEY_MORTALITY = 'manthena_aqua_mortality_dashboard_v1';
-  const STORAGE_KEY_WATER_QUALITY = 'manthena_aqua_water_quality_v1';
 
   // Default Firebase Configuration Credentials Placeholder
   let firebaseConfig = {
@@ -246,57 +240,6 @@ window.AQUA_STORAGE = (function() {
     if (!localStorage.getItem(STORAGE_KEY_SERVANT_PANELS)) {
       localStorage.setItem(STORAGE_KEY_SERVANT_PANELS, JSON.stringify({}));
     }
-    if (!localStorage.getItem(STORAGE_KEY_AERATORS)) {
-      localStorage.setItem(STORAGE_KEY_AERATORS, JSON.stringify({}));
-    }
-    if (!localStorage.getItem(STORAGE_KEY_FEED_STOCK)) {
-      localStorage.setItem(STORAGE_KEY_FEED_STOCK, JSON.stringify({}));
-    }
-    if (!localStorage.getItem(STORAGE_KEY_SHRIMP_COUNT)) {
-      localStorage.setItem(STORAGE_KEY_SHRIMP_COUNT, JSON.stringify({}));
-    }
-    if (!localStorage.getItem(STORAGE_KEY_FEED_SUMMARY)) {
-      localStorage.setItem(STORAGE_KEY_FEED_SUMMARY, JSON.stringify({}));
-    }
-    if (!localStorage.getItem(STORAGE_KEY_MORTALITY)) {
-      localStorage.setItem(STORAGE_KEY_MORTALITY, JSON.stringify({}));
-    }
-    if (!localStorage.getItem(STORAGE_KEY_WATER_QUALITY)) {
-      localStorage.setItem(STORAGE_KEY_WATER_QUALITY, JSON.stringify({}));
-    }
-    registerRealtimeDashboardSync();
-  }
-
-  function notifyDashboardSync() {
-    try {
-      window.dispatchEvent(new CustomEvent('aqua-dashboard-sync', { detail: { updatedAt: Date.now() } }));
-    } catch (e) {}
-  }
-
-  function registerRealtimeDashboardSync() {
-    if (!isFirebaseActive || !db) return;
-
-    const collections = ['ponds', 'feedLogs', 'waterLogs', 'growthLogs', 'mortalityLogs', 'mortality', 'waterQuality', 'aerators', 'feedStock', 'shrimpCount', 'feedSummary', 'servantPanels'];
-    collections.forEach((collectionName) => {
-      try {
-        db.collection(collectionName).onSnapshot((snapshot) => {
-          const data = {};
-          snapshot.forEach((doc) => {
-            data[doc.id] = doc.data();
-          });
-          localStorage.setItem(`manthena_aqua_${collectionName}_v1`, JSON.stringify(data));
-          notifyDashboardSync();
-        }, () => {});
-      } catch (e) {}
-    });
-  }
-
-  function readLocalCollection(storageKey) {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) || '{}');
-    } catch (e) {
-      return {};
-    }
   }
 
   // --- API METHODS ---
@@ -412,32 +355,18 @@ window.AQUA_STORAGE = (function() {
 
     // Water Quality Logs CRUD
     getWaterLogs: async function() {
-      if (isFirebaseActive && db) {
-        try {
-          const snapshot = await db.collection("waterLogs").get();
-          const list = [];
-          snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-          return list.length ? list : JSON.parse(localStorage.getItem(STORAGE_KEY_WATER_LOGS) || "[]");
-        } catch(e) {}
-      }
       return JSON.parse(localStorage.getItem(STORAGE_KEY_WATER_LOGS) || "[]");
     },
 
     saveWaterLog: async function(wqObj) {
       let logs = await this.getWaterLogs();
       if (!wqObj.id) wqObj.id = 'wq_' + Date.now();
-      const existingIdx = logs.findIndex(l => l.id === wqObj.id);
-      if (existingIdx >= 0) {
-        logs[existingIdx] = wqObj;
-      } else {
-        logs.push(wqObj);
-      }
+      logs.push(wqObj);
       localStorage.setItem(STORAGE_KEY_WATER_LOGS, JSON.stringify(logs));
 
       if (isFirebaseActive && db) {
         try {
           await db.collection("waterLogs").doc(wqObj.id).set(wqObj);
-          await db.collection("waterQuality").doc(wqObj.id).set(wqObj);
         } catch(e) {}
       }
       return wqObj;
@@ -445,26 +374,13 @@ window.AQUA_STORAGE = (function() {
 
     // Growth Logs CRUD
     getGrowthLogs: async function() {
-      if (isFirebaseActive && db) {
-        try {
-          const snapshot = await db.collection("growthLogs").get();
-          const list = [];
-          snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-          return list.length ? list : JSON.parse(localStorage.getItem(STORAGE_KEY_GROWTH_LOGS) || "[]");
-        } catch(e) {}
-      }
       return JSON.parse(localStorage.getItem(STORAGE_KEY_GROWTH_LOGS) || "[]");
     },
 
     saveGrowthLog: async function(grObj) {
       let logs = await this.getGrowthLogs();
       if (!grObj.id) grObj.id = 'gr_' + Date.now();
-      const existingIdx = logs.findIndex(l => l.id === grObj.id);
-      if (existingIdx >= 0) {
-        logs[existingIdx] = grObj;
-      } else {
-        logs.push(grObj);
-      }
+      logs.push(grObj);
       localStorage.setItem(STORAGE_KEY_GROWTH_LOGS, JSON.stringify(logs));
 
       if (isFirebaseActive && db) {
@@ -476,34 +392,14 @@ window.AQUA_STORAGE = (function() {
     },
 
     getMortalityLogs: async function() {
-      if (isFirebaseActive && db) {
-        try {
-          const snapshot = await db.collection("mortality").get();
-          const list = [];
-          snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-          return list.length ? list : JSON.parse(localStorage.getItem(STORAGE_KEY_MORTALITY_LOGS) || "[]");
-        } catch(e) {}
-      }
       return JSON.parse(localStorage.getItem(STORAGE_KEY_MORTALITY_LOGS) || "[]");
     },
 
     saveMortalityLog: async function(mortObj) {
       let logs = await this.getMortalityLogs();
       if (!mortObj.id) mortObj.id = 'mort_' + Date.now();
-      const existingIdx = logs.findIndex(l => l.id === mortObj.id);
-      if (existingIdx >= 0) {
-        logs[existingIdx] = mortObj;
-      } else {
-        logs.push(mortObj);
-      }
+      logs.push(mortObj);
       localStorage.setItem(STORAGE_KEY_MORTALITY_LOGS, JSON.stringify(logs));
-
-      if (isFirebaseActive && db) {
-        try {
-          await db.collection("mortality").doc(mortObj.id).set(mortObj);
-          await db.collection("mortalityLogs").doc(mortObj.id).set(mortObj);
-        } catch(e) {}
-      }
       return mortObj;
     },
 
@@ -518,33 +414,11 @@ window.AQUA_STORAGE = (function() {
 
     // Feed Stock Management
     getFeedStock: async function() {
-      if (isFirebaseActive && db) {
-        try {
-          const snapshot = await db.collection("feedStock").get();
-          const docs = [];
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            if (Array.isArray(data.items)) {
-              docs.push(...data.items);
-            } else if (data && typeof data === 'object') {
-              docs.push({ id: doc.id, ...data });
-            }
-          });
-          return docs.length ? docs : JSON.parse(localStorage.getItem(STORAGE_KEY_STOCK) || "[]");
-        } catch(e) {}
-      }
       return JSON.parse(localStorage.getItem(STORAGE_KEY_STOCK) || "[]");
     },
 
     saveFeedStock: async function(stockList) {
       localStorage.setItem(STORAGE_KEY_STOCK, JSON.stringify(stockList));
-      if (isFirebaseActive && db) {
-        try {
-          await db.collection("feedStock").doc("inventory").set({ items: stockList, updatedAt: new Date().toISOString() }, { merge: true });
-        } catch(e) {}
-      }
-      notifyDashboardSync();
-      return stockList;
     },
 
     getEditHistory: async function() {
@@ -589,7 +463,6 @@ window.AQUA_STORAGE = (function() {
       };
       panels[pondId] = payload;
       localStorage.setItem(STORAGE_KEY_SERVANT_PANELS, JSON.stringify(panels));
-      notifyDashboardSync();
 
       if (isFirebaseActive && db && pondId) {
         try {
@@ -599,51 +472,6 @@ window.AQUA_STORAGE = (function() {
         }
       }
       return payload;
-    },
-
-    getDashboardCollection: async function(collectionName, docId) {
-      const storageKey = `manthena_aqua_${collectionName}_v1`;
-      const store = readLocalCollection(storageKey);
-      if (docId) {
-        return store[docId] || null;
-      }
-      return store;
-    },
-
-    saveDashboardCollectionEntry: async function(collectionName, docId, payload) {
-      const storageKey = `manthena_aqua_${collectionName}_v1`;
-      const store = readLocalCollection(storageKey);
-      const finalPayload = {
-        ...store[docId],
-        ...payload,
-        updatedAt: new Date().toISOString(),
-        savedBy: payload.savedBy || 'Servant'
-      };
-      store[docId] = finalPayload;
-      localStorage.setItem(storageKey, JSON.stringify(store));
-      notifyDashboardSync();
-
-      if (isFirebaseActive && db && docId) {
-        try {
-          await db.collection(collectionName).doc(docId).set(finalPayload, { merge: true });
-        } catch (e) {
-          console.error("Firebase dashboard collection save error:", e);
-        }
-      }
-      return finalPayload;
-    },
-
-    listenForDashboardUpdates: function(callback) {
-      const onSync = () => callback && callback();
-      window.addEventListener('aqua-dashboard-sync', onSync);
-      window.addEventListener('storage', (event) => {
-        if (event.key && event.key.includes('manthena_aqua_')) {
-          callback && callback();
-        }
-      });
-      return () => {
-        window.removeEventListener('aqua-dashboard-sync', onSync);
-      };
     }
   };
 })();

@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     viewMode: 'grid',
     searchQuery: '',
     statusFilter: 'all',
-    language: localStorage.getItem('manthena_aqua_lang') || 'en',
     ponds: [],
     feedLogs: [],
     waterLogs: [],
@@ -28,7 +27,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       category: 'all',
       status: 'all'
     },
+    users: [],
+    userFilters: {
+      query: '',
+      role: 'all',
+      status: 'all'
+    },
     selectedPondId: null,
+    currentQuickEntryId: null,
+    currentFeedEditId: null,
+    currentWaterEditId: null,
+    currentGrowthEditId: null,
+    currentMortalityEditId: null,
+    isTelugu: false,
     selectedFeedSlot: '07:00 AM',
     selectedConsumption: '100% Consumed',
     editingExpenseId: null
@@ -41,219 +52,141 @@ document.addEventListener('DOMContentLoaded', async () => {
     { time: '04:00 PM', label: '4:00 PM Feed' }
   ];
 
-  function toArray(value) {
-    return Array.isArray(value) ? value : [];
-  }
-
-  const APP_TEXT = {
+  const translations = {
     en: {
       aquaFarming: 'AQUA FARMING',
       owner: 'Owner',
-      supervisor: 'Supervisor',
-      servant: 'Servant',
       usernameLabel: 'Username',
       passwordLabel: 'Password',
       signInToAqua: 'Sign In to AQUA FARMING',
       secureJWT: 'Secure JWT Encrypted Login',
       installAquaApp: 'Install Aqua App',
-      switchLanguage: 'తెలుగు',
       logout: 'Logout',
       localEngine: 'Local Engine (Offline Ready)',
-      ownerDashboard: 'Executive Dashboard',
+      ownerDashboard: 'Owner Dashboard',
       pondManagement: 'Pond Management',
-      servantFeedingPortal: 'Servant Feeding Portal',
-      supervisorDashboard: 'Supervisor Monitoring',
+      servantFeedingPortal: 'Servant Dashboard',
+      supervisorDashboard: 'Supervisor Dashboard',
       waterGrowthLogs: 'Water & Growth Logs',
       feedStockInventory: 'Feed Stock Inventory',
       manageUsers: 'Manage Users',
       investmentExpenses: 'Investment & Expenses',
-      dashboardTitle: 'Farm Overview Dashboard',
-      dashboardSubtitle: 'Real-time feed tracking, pond culture progress, and operational metrics.',
-      exportCsv: 'Export CSV',
-      addNewPond: 'Add New Pond',
-      totalPonds: 'Total Ponds',
-      activePonds: 'Active Ponds',
-      feedGivenToday: 'Feed Given Today',
-      feedCompletion: 'Feed Completion',
-      registeredPonds: 'Registered ponds',
-      currentlyActive: 'Currently active',
-      servantSubmissions: 'Servant submissions',
-      feedsPending: 'feeds pending',
-      docDays: 'DOC (Days)',
-      stockingDate: 'Stocking Date',
-      supervisorLabel: 'Supervisor',
-      servantLabel: 'Servant',
-      todaysFeedingSchedule: "Today's Feeding Schedule",
-      details: 'Details',
-      edit: 'Edit',
-      delete: 'Delete',
-      view: 'View',
-      openConsole: 'Open Console',
-      assignedServant: 'Assigned Servant',
-      noActivePonds: 'No active ponds available.',
-      totalFeedStock: 'Total Feed Stock',
-      remainingFeedStock: 'Remaining Feed Stock',
-      runningAerators: 'Running Aerators',
-      totalAerators: 'Total Aerators',
-      storeAvailability: 'Store availability',
-      currentReserve: 'Current reserve',
-      installedUnits: 'Installed units',
-      stopped: 'stopped',
-      totalAeratorsInstalled: 'Total Aerators Installed',
-      operational: 'Operational',
-      needsInspection: 'Needs inspection',
-      status: 'Status',
-      allAeratorsNormal: 'All aerators normal',
-      alertRaised: 'Alert raised',
-      totalFeedStockAvailable: 'Total Feed Stock Available',
-      warehouseBalance: 'Warehouse balance',
-      feedAddedToday: 'Feed Added Today',
-      addedToday: 'Added today',
-      feedUsedToday: 'Feed Used Today',
-      todayConsumption: 'Today consumption',
-      urgentRefillRequired: 'Urgent refill required',
-      stableReserve: 'Stable reserve',
-      totalShrimpCount: 'Total Shrimp Count',
-      initialStock: 'Initial stock',
-      currentEstimatedCount: 'Current Estimated Count',
-      afterMortality: 'After mortality',
+      ownerQuickEntries: 'Owner Daily Entry',
+      ownerQuickEntriesHint: 'Update pond feed, water, and mortality records from the owner dashboard.',
+      selectPond: 'Select Pond',
+      todaysFeedKg: 'Feed Used Today (KG)',
+      waterPh: 'Pond pH Level',
+      dissolvedOxygen: 'Dissolved Oxygen (DO)',
+      temperature: 'Temperature',
       mortalityCount: 'Mortality Count',
-      recordedLosses: 'Recorded losses',
-      survivalPercentage: 'Survival Percentage',
-      liveShrimpRate: 'Live shrimp rate',
-      feedGivenToday: 'Feed Given Today',
-      acrossAllPonds: 'Across all ponds',
-      feedGivenToEachPond: 'Feed Given to Each Pond',
-      recentPondTotals: 'Recent pond totals',
-      feedingTimeHistory: 'Feeding Time History',
-      recentSchedule: 'Recent schedule',
-      totalFeedConsumption: 'Total Feed Consumption',
-      dailyTotal: 'Daily total',
-      noFeedEntriesToday: 'No feed entries today',
-      noFeedingHistory: 'No feeding history',
-      onlyOwnerSupervisorCanEdit: 'Only owner or supervisor can edit these card values.'
+      remarks: 'Remarks',
+      ownerEntryPlaceholder: 'Updated by owner',
+      saveValues: 'Save Values',
+      clearForm: 'Clear Form',
+      pondId: 'Pond ID',
+      date: 'Date',
+      feed: 'Feed',
+      waterQuality: 'Water',
+      mortality: 'Mortality',
+      actions: 'Actions',
+      editLatestEntry: 'Edit Latest Entry',
+      submitFeedRecord: 'Submit Feed Record',
+      saveWaterLog: 'Save Water Quality Log',
+      saveGrowthData: 'Save Growth Data',
+      recordMortality: 'Record Mortality',
+      switchLanguage: 'తెలుగు',
+      loginUsername: 'enter your user name',
+      loginPassword: 'enter your password'
     },
     te: {
       aquaFarming: 'అక్వా ఫార్మింగ్',
       owner: 'యజమాని',
-      supervisor: 'సూపర్వైజర్',
-      servant: 'సేవకురాలు',
-      usernameLabel: 'యూజర్ పేరు',
-      passwordLabel: 'పాస్వర్డ్',
-      signInToAqua: 'అక్వా ఫార్మింగ్లో సైన్ ఇన్ చేయండి',
-      secureJWT: 'సురక్షిత JWT ఎన్క్రిప్ట్ లాగిన్',
-      installAquaApp: 'అప్లికేషన్ ఇన్‌స్టాల్ చేయండి',
+      usernameLabel: 'వాడుకరి పేరు',
+      passwordLabel: 'పాస్‌వర్డ్',
+      signInToAqua: 'అక్వా ఫార్మింగ్‌లోకి ప్రవేశించండి',
+      secureJWT: 'సురక్షిత JWT ఎన్‌క్రిప్ట్ లాగిన్',
+      installAquaApp: 'అప్‌పును ఇన్స్టాల్ చేయండి',
+      logout: 'లాగ్అవుట్',
+      localEngine: 'లోకల్ ఇంజిన్ (ఆఫ్‌లైన్ రdy)',
+      ownerDashboard: 'ఓనర్ డాష్‌బోర్డ్',
+      pondManagement: 'పూడి నిర్వహణ',
+      servantFeedingPortal: 'సెర్వెంట్ డాష్‌బోర్డ్',
+      supervisorDashboard: 'సూపర్‌వైజర్ డాష్‌బోర్డ్',
+      waterGrowthLogs: 'నీరు & వృద్ధి లాగ్స్',
+      feedStockInventory: 'ఫీడ్ స్టాక్ ఇన్వెంటరీ',
+      manageUsers: 'వినియోగదారులను నిర్వహించండి',
+      investmentExpenses: 'వృద్ధి & ఖర్చులు',
+      ownerQuickEntries: 'యజమాని తక్షణ ఎంట్రీ',
+      ownerQuickEntriesHint: 'యజమాని డాష్‌బోర్డ్లో ఈరోజు పూడి ఫీడ్, నీరు, మరణాలు వివరాలను నవీకరించండి.',
+      selectPond: 'పూడిని ఎంచుకోండి',
+      todaysFeedKg: 'ఈరోజు ఫీడ్ (కెజి)',
+      waterPh: 'నీటి pH',
+      dissolvedOxygen: 'డిసోల్వ్డ్ ఆక్సిజన్ (DO)',
+      temperature: 'ఉష్ణోగ్రత',
+      mortalityCount: 'మరణాల సంఖ్య',
+      remarks: 'వ్యాఖ్యలు',
+      ownerEntryPlaceholder: 'యజమాని ద్వారా నవీకరించబడింది',
+      saveValues: 'విలువలను సేవ్ చేయండి',
+      clearForm: 'ఫారమ్‌ను క్లియర్ చేయండి',
+      pondId: 'పూడి ID',
+      date: 'తేదీ',
+      feed: 'ఫీడ్',
+      waterQuality: 'నీరు',
+      mortality: 'మరణాలు',
+      actions: 'చర్యలు',
+      editLatestEntry: 'చివరి ఎంట్రీని సవరించండి',
+      submitFeedRecord: 'ఫీడ్ రికార్డు సమర్పించండి',
+      saveWaterLog: 'నీటి నాణ్యత లాగ్‌ను సేవ్ చేయండి',
+      saveGrowthData: 'వృద్ధి డేటాను సేవ్ చేయండి',
+      recordMortality: 'మరణాల నమోదు చేయండి',
       switchLanguage: 'English',
-      logout: 'లాగ్ఔట్',
-      localEngine: 'లోకల్ ఇంజిన్ (ఆఫ్‌లైన్ రెడీ)',
-      ownerDashboard: 'ఎగ్జిక్యూటివ్ డాష్‌బోర్డ్',
-      pondManagement: 'చెరువు నిర్వహణ',
-      servantFeedingPortal: 'సేవకుడు ఫీడింగ్ పోర్టల్',
-      supervisorDashboard: 'సూపర్వైజర్ మానిటరింగ్',
-      waterGrowthLogs: 'నీరు & గ్రోత్ లాగ్స్',
-      feedStockInventory: 'ఫీడ్ స్టాక్ ఇన్‌వెంటరీ',
-      manageUsers: 'యూజర్లు నిర్వహణ',
-      investmentExpenses: 'వినియోగం & ఖర్చులు',
-      dashboardTitle: 'ఫామ్ అవలోవర్ డాష్‌బోర్డ్',
-      dashboardSubtitle: 'రియల్-టైమ్ ఫీడ్ ట్రాకింగ్, చెరువు కల్చర్ పురోగతి మరియు ఆపరేషనల్ మెట్రిక్స్.',
-      exportCsv: 'CSV ఎక్స్‌పోర్ట్',
-      addNewPond: 'కొత్త చెరువు జోడించండి',
-      totalPonds: 'మొత్తం చెరువులు',
-      activePonds: 'క్రియాశీల చెరువులు',
-      feedGivenToday: 'ఈరోజు ఇవ్వబడిన ఫీడ్',
-      feedCompletion: 'ఫీడ్ పూర్తి',
-      registeredPonds: 'నమోదు చేసిన చెరువులు',
-      currentlyActive: 'ప్రస్తుతం క్రియాశీలంగా ఉన్నాయి',
-      servantSubmissions: 'సేవకుడు సమర్పణలు',
-      feedsPending: 'ఫీడ్స్ పెండింగ్',
-      docDays: 'DOC (రోజులు)',
-      stockingDate: 'స్టాకింగ్ డేట్',
-      supervisorLabel: 'సూపర్వైజర్',
-      servantLabel: 'సేవకుడు',
-      todaysFeedingSchedule: 'ఈరోజు ఫీడింగ్ షెడ్యూల్',
-      details: 'వివరాలు',
-      edit: 'సవరించండి',
-      delete: 'తొలగించండి',
-      view: 'చూడండి',
-      openConsole: 'కాన్సోల్ ఓపెన్ చేయండి',
-      assignedServant: 'నియమించిన సేవకుడు',
-      noActivePonds: 'క్రియాశీల చెరువులు లేవు.',
-      totalFeedStock: 'మొత్తం ఫీడ్ స్టాక్',
-      remainingFeedStock: 'మిగిలిన ఫీడ్ స్టాక్',
-      runningAerators: 'రన్నింగ్ ఎయిరేటర్లు',
-      totalAerators: 'మొత్తం ఎయిరేటర్లు',
-      storeAvailability: 'స్టోర్ లభ్యత',
-      currentReserve: 'ప్రస్తుత రిజర్వ్',
-      installedUnits: 'ఇన్‌స్టాల్ చేయబడిన యూనిట్స్',
-      stopped: 'ఆపు',
-      totalAeratorsInstalled: 'మొత్తం ఎయిరేటర్లు ఇన్‌స్టాల్ అయ్యాయి',
-      operational: 'ఆపరేషనల్',
-      needsInspection: 'శోధన అవసరం',
-      installedUnits: 'ఇన్‌స్టాల్ చేసిన యూనిట్స్',
-      status: 'స్థితి',
-      allAeratorsNormal: 'అన్ని ఎయిరేటర్లు సాధారణం',
-      alertRaised: 'అలర్ట్ వచ్చింది',
-      totalFeedStockAvailable: 'లభ్యమయ్యే మొత్తం ఫీడ్ స్టాక్',
-      warehouseBalance: 'వార్హౌస్ బ్యాలన్స్',
-      feedAddedToday: 'ఈరోజు జోడించిన ఫీడ్',
-      addedToday: 'ఈరోజు జోడించబడింది',
-      feedUsedToday: 'ఈరోజు ఉపయోగించిన ఫీడ్',
-      todayConsumption: 'ఈరోజు వినియోగం',
-      urgentRefillRequired: 'వేగంగా పునరాగమనం అవసరం',
-      stableReserve: 'స్థిర రిజర్వ్',
-      totalShrimpCount: 'మొత్తం ష్రింప్స్ కౌంట్',
-      initialStock: 'ప్రారంభ స్టాక్',
-      currentEstimatedCount: 'ప్రస్తుత అంచనా కౌంట్',
-      afterMortality: 'మార్శాల తర్వాత',
-      mortalityCount: 'మార్శాల కౌంట్',
-      recordedLosses: 'రికార్డ్ అయిన నష్టం',
-      survivalPercentage: 'సర్వైవల్ శాతం',
-      liveShrimpRate: 'లైవ్ ష్రింప్స్ రేట్',
-      feedGivenToday: 'ఈరోజు ఇవ్వబడిన ఫీడ్',
-      acrossAllPonds: 'అన్ని చెరువుల మీద',
-      feedGivenToEachPond: 'ప్రతి చెరువుకు ఇవ్వబడిన ఫీడ్',
-      recentPondTotals: 'ఇటీవలి చెరువు మొత్తాలు',
-      feedingTimeHistory: 'ఫీడింగ్ టైమ్ హిస్టరీ',
-      recentSchedule: 'ఇటీవలి షెడ్యూల్',
-      totalFeedConsumption: 'మొత్తం ఫీడ్ కన్స్యూమ్',
-      dailyTotal: 'రోజువారీ మొత్తం',
-      noFeedEntriesToday: 'ఈరోజు ఫీడ్ ఎంట్రీలు లేవు',
-      noFeedingHistory: 'ఫీడింగ్ హిస్టరీ లేదు',
-      onlyOwnerSupervisorCanEdit: 'ఈ కార్డ్ విలువలను మాత్రమే యజమాని లేదా సూపర్వైజర్ మాత్రమే సవరించగలరు.'
+      loginUsername: 'మీ వాడుకరి పేరును నమోదు చేయండి',
+      loginPassword: 'మీ పాస్‌వర్డ్‌ను నమోదు చేయండి'
     }
   };
 
-  function t(key, fallback = '') {
-    return (APP_TEXT[state.language] && APP_TEXT[state.language][key]) || fallback || (APP_TEXT.en && APP_TEXT.en[key]) || '';
-  }
+  window.AQUA_APP = window.AQUA_APP || {};
 
-  function applyTranslations() {
+  function applyLanguageText() {
+    const lang = state.isTelugu ? 'te' : 'en';
+    document.documentElement.lang = lang === 'te' ? 'te' : 'en';
+
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (key) {
-        const translated = t(key, el.textContent.trim());
-        el.textContent = translated;
+      if (translations[lang][key]) {
+        el.textContent = translations[lang][key];
       }
     });
 
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
-      if (key) {
-        el.placeholder = t(key, el.getAttribute('placeholder') || '');
+      if (translations[lang][key]) {
+        el.setAttribute('placeholder', translations[lang][key]);
       }
     });
 
-    const toggleBtn = document.getElementById('langToggleBtn');
-    if (toggleBtn) {
-      const toggleLabel = toggleBtn.querySelector('span[data-i18n="switchLanguage"]');
-      if (toggleLabel) {
-        toggleLabel.textContent = t('switchLanguage', 'తెలుగు');
-      }
+    const langBtn = document.getElementById('langToggleBtn');
+    if (langBtn) {
+      const label = langBtn.querySelector('span');
+      if (label) label.textContent = translations[lang].switchLanguage;
     }
+
+    localStorage.setItem('aquaLanguage', lang);
   }
 
-  // Global Helper API Container
-  window.AQUA_APP = window.AQUA_APP || {};
+  const savedLanguage = localStorage.getItem('aquaLanguage');
+  if (savedLanguage === 'te') {
+    state.isTelugu = true;
+  }
+
+  window.AQUA_APP.toggleLanguage = function() {
+    state.isTelugu = !state.isTelugu;
+    applyLanguageText();
+  };
+
+  function toArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
 
   // Quick Login Pill autofill helper
   window.AQUA_APP.fillLogin = function(username, password) {
@@ -263,14 +196,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       uInput.value = username;
       pInput.value = password;
     }
-  };
-
-  window.AQUA_APP.toggleLanguage = function() {
-    state.language = state.language === 'te' ? 'en' : 'te';
-    localStorage.setItem('manthena_aqua_lang', state.language);
-    applyTranslations();
-    renderAll();
-    showToast(state.language === 'te' ? 'తెలుగు మోడ్లో ఉంది' : 'English mode enabled');
   };
 
   // Password Visibility Toggle
@@ -290,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Login Form Submission Handler
   document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('loginUsername').value.trim();
+    const credential = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
 
     try {
@@ -298,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ credential, password })
       });
 
       const data = await res.json();
@@ -312,15 +237,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         localStorage.setItem('manthena_aqua_jwt', data.token);
         localStorage.setItem('manthena_aqua_user', JSON.stringify(state.user));
-        
         showToast(`Welcome back, ${data.user.name}!`);
         initAuthenticatedUI();
       } else {
         // Fallback demo auth if running directly via file:// or without active server
-        performOfflineFallbackAuth(username, password);
+        performOfflineFallbackAuth(credential, password);
       }
     } catch (err) {
-      performOfflineFallbackAuth(username, password);
+      performOfflineFallbackAuth(credential, password);
     }
   });
 
@@ -372,15 +296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('activeUserRole').textContent = state.user.role.toUpperCase();
     }
 
-    if (!state.syncCleanup) {
-      state.syncCleanup = window.AQUA_STORAGE.listenForDashboardUpdates(async () => {
-        if (state.user) {
-          await loadData();
-        }
-      });
-    }
-
-    applyTranslations();
     applyRolePermissions();
     await loadData();
   }
@@ -413,16 +328,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.growthLogs = toArray(await window.AQUA_STORAGE.getGrowthLogs?.());
     state.mortalityLogs = toArray(await window.AQUA_STORAGE.getMortalityLogs?.());
     state.feedStock = toArray(await window.AQUA_STORAGE.getFeedStock?.());
-    if (state.user?.role === 'owner') {
-      try {
-        const usersRes = await fetch('/api/users', { headers: getAuthHeaders() });
-        if (usersRes.ok) {
-          state.users = await usersRes.json();
-        }
-      } catch (e) {
-        state.users = [];
-      }
-    }
     state.expenses = toArray(await window.AQUA_STORAGE.getExpenses?.());
     state.operationalLogs = toArray(await fetch('/api/operational-logs').then(r => r.json()).catch(() => []));
     state.ownerNotifications = toArray(state.operationalLogs).filter(log => log.type === 'urgent-report' || log.type === 'notification');
@@ -479,18 +384,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
 
-  function getAuthHeaders(extraHeaders = {}) {
-    const headers = {
-      ...(extraHeaders || {}),
-      'Content-Type': 'application/json'
-    };
-    const token = state.user?.token || localStorage.getItem('manthena_aqua_jwt');
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    return headers;
-  }
-
   function showToast(msg, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -506,10 +399,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderAll() {
-    applyTranslations();
     renderKPIs();
     renderPondGridOrTable();
     renderServantPonds();
+    renderOwnerQuickEntries();
     renderSupervisorDashboard();
     renderStockManagement();
     renderServantOperationalPanels();
@@ -521,128 +414,368 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderOwnerNotifications();
     renderWaterAndGrowthLogs();
     renderHistoricalDashboard();
-    renderUsersTable();
     applyRolePermissions();
+    applyLanguageText();
   }
 
-  function canEditDashboardCards() {
-    return ['owner', 'supervisor', 'servant'].includes((state.user && state.user.role) || '');
+  function applyRolePermissions() {
+    if (!state.user) return;
+    const role = state.user.role;
+    document.querySelectorAll('.owner-only').forEach(el => {
+      el.style.display = (role === 'owner') ? '' : 'none';
+    });
+    document.querySelectorAll('.supervisor-only').forEach(el => {
+      el.style.display = (role === 'owner' || role === 'supervisor') ? '' : 'none';
+    });
+
+    if (role === 'servant') {
+      const currentTab = state.activeTab;
+      if (currentTab !== 'servant-feeding') {
+        switchTab('servant-feeding');
+      }
+      const servantTabButton = document.querySelector('.nav-tab[data-tab="servant-feeding"]');
+      if (servantTabButton) {
+        servantTabButton.style.display = '';
+        servantTabButton.classList.add('active');
+      }
+    }
+  }
+
+  const USER_STORAGE_KEY = 'manthena_aqua_users_v1';
+  const DEFAULT_LOCAL_USERS = [
+    {
+      _id: 'user_owner',
+      userId: 'U001',
+      username: 'manthena',
+      name: 'Bhatraju Raju',
+      email: 'owner@aquafarm.io',
+      mobileNumber: '9876543210',
+      role: 'owner',
+      assignedPonds: [],
+      profilePhoto: '',
+      accountNotes: 'Farm owner account.',
+      status: 'active',
+      isActive: true,
+      isSuspended: false,
+      lastLogin: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      _id: 'user_supervisor',
+      userId: 'U002',
+      username: 'rajesh',
+      name: 'Rajesh Kumar',
+      email: 'rajesh@aquafarm.io',
+      mobileNumber: '9876501234',
+      role: 'supervisor',
+      assignedPonds: ['P001', 'P002'],
+      profilePhoto: '',
+      accountNotes: 'Supervisor account.',
+      status: 'active',
+      isActive: true,
+      isSuspended: false,
+      lastLogin: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      _id: 'user_servant',
+      userId: 'U003',
+      username: 'ramu',
+      name: 'Ramu',
+      email: 'ramu@aquafarm.io',
+      mobileNumber: '9876509876',
+      role: 'servant',
+      assignedPonds: ['P001'],
+      profilePhoto: '',
+      accountNotes: 'Servant account.',
+      status: 'active',
+      isActive: true,
+      isSuspended: false,
+      lastLogin: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
+
+  function getLocalUsers() {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(DEFAULT_LOCAL_USERS));
+      return [...DEFAULT_LOCAL_USERS];
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed;
+      }
+    } catch (err) {}
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(DEFAULT_LOCAL_USERS));
+    return [...DEFAULT_LOCAL_USERS];
+  }
+
+  function setLocalUsers(users) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
+  }
+
+  function normalizeUserRecord(user) {
+    if (window.AQUA_USER_UTILS && typeof window.AQUA_USER_UTILS.normalizeUserRecord === 'function') {
+      return window.AQUA_USER_UTILS.normalizeUserRecord(user, user?._id || user?.userId || `U${Date.now()}`);
+    }
+    return {
+      ...user,
+      assignedPonds: Array.isArray(user.assignedPonds) ? user.assignedPonds : (user.assignedPonds ? String(user.assignedPonds).split(',').map(v => v.trim()).filter(Boolean) : []),
+      role: String(user.role || 'servant').toLowerCase(),
+      status: user.status || (user.isActive ? 'active' : 'inactive'),
+      userId: user.userId || user.id || `U${Date.now()}`
+    };
+  }
+
+  function applyUserFilters(users) {
+    return (users || []).filter(user => {
+      const query = String(state.userFilters.query || '').toLowerCase();
+      if (query) {
+        const text = [user.userId, user.name, user.username, user.email, user.mobileNumber, user.role, (user.assignedPonds || []).join(','), user.status].join(' ').toLowerCase();
+        if (!text.includes(query)) return false;
+      }
+      if (state.userFilters.role !== 'all' && user.role !== state.userFilters.role) return false;
+      if (state.userFilters.status !== 'all' && user.status !== state.userFilters.status) return false;
+      return true;
+    });
+  }
+
+  function generateNextLocalUserId(users = []) {
+    const numericIds = (users || []).map(u => {
+      const digits = String(u.userId || u.id || '').replace(/\D/g, '');
+      return digits ? parseInt(digits, 10) : 0;
+    }).filter(n => Number.isFinite(n) && n > 0);
+    const nextNumber = numericIds.length ? Math.max(...numericIds) + 1 : 1;
+    return `U${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  async function loadUsers() {
+    let users = [];
+    try {
+      const token = localStorage.getItem('manthena_aqua_jwt');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch('/api/users', { headers });
+      if (res.ok) {
+        users = await res.json();
+      } else {
+        users = getLocalUsers();
+      }
+    } catch (err) {
+      users = getLocalUsers();
+    }
+
+    state.users = (users || []).map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
   }
 
   function renderUsersTable() {
-    const tbody = document.getElementById('usersTableBody');
-    if (!tbody) return;
+    const tableBody = document.getElementById('usersTableBody');
+    if (!tableBody) return;
+    const filtered = applyUserFilters(state.users);
+    if (!filtered.length) {
+      tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:1rem; color:var(--text-dim);">No users found.</td></tr>`;
+      return;
+    }
 
-    const users = toArray(state.users || []);
-    const query = (document.getElementById('userSearchInput')?.value || '').toLowerCase();
-    const role = (document.getElementById('userRoleFilter')?.value || 'all').toLowerCase();
-    const status = (document.getElementById('userStatusFilter')?.value || 'all').toLowerCase();
-
-    const filteredUsers = users.filter(user => {
-      const normalized = window.AQUA_USER_UTILS ? window.AQUA_USER_UTILS.normalizeUserRecord(user, user?.uid || user?.id) : user;
-      const normalizedStatus = user?.isSuspended ? 'suspended' : (user?.isActive === false ? 'inactive' : (normalized.status || 'active'));
-      const searchText = [normalized.userId, normalized.fullName, normalized.mobile, normalized.email, normalized.username, normalized.role, (normalized.assignedPonds || []).join(','), normalizedStatus].join(' ').toLowerCase();
-      const matchesQuery = !query || searchText.includes(query);
-      const matchesRole = role === 'all' || normalized.role === role;
-      const matchesStatus = status === 'all' || normalizedStatus === status;
-      return matchesQuery && matchesRole && matchesStatus;
-    });
-
-    tbody.innerHTML = filteredUsers.map(user => {
-      const normalized = window.AQUA_USER_UTILS ? window.AQUA_USER_UTILS.normalizeUserRecord(user, user?.uid || user?.id) : user;
-      const normalizedStatus = user?.isSuspended ? 'suspended' : (user?.isActive === false ? 'inactive' : (normalized.status || 'active'));
-      const statusText = normalizedStatus === 'suspended' ? 'Suspended' : normalizedStatus === 'inactive' ? 'Inactive' : 'Active';
-      const lastLogin = normalized.lastLogin ? new Date(normalized.lastLogin).toLocaleDateString() : '—';
+    tableBody.innerHTML = filtered.map(user => {
+      const statusLabel = user.status === 'active' ? 'Active' : user.status === 'suspended' ? 'Suspended' : 'Inactive';
       return `
         <tr>
-          <td>${normalized.userId || '-'} </td>
-          <td>${normalized.fullName || normalized.name || '-'} </td>
-          <td>${normalized.role || 'servant'}</td>
-          <td>${normalized.mobile || '-'}</td>
-          <td>${normalized.username || '-'}</td>
-          <td><span class="status-pill ${normalizedStatus === 'suspended' ? 'inactive' : 'active'}">${statusText}</span></td>
-          <td>${normalized.createdAt ? new Date(normalized.createdAt).toLocaleDateString() : '-'}</td>
-          <td>${lastLogin}</td>
+          <td>${user.userId || ''}</td>
+          <td>${user.name || ''}</td>
+          <td>${user.role || ''}</td>
+          <td>${user.mobileNumber || ''}</td>
+          <td>${user.username || ''}</td>
+          <td>${statusLabel}</td>
+          <td>${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}</td>
+          <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : ''}</td>
           <td>
-            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.openUserModal(${JSON.stringify(normalized).replace(/"/g, '&quot;')})">Edit</button>
-            <button class="btn btn-danger btn-sm owner-only" onclick="window.AQUA_APP.deleteUser('${normalized.id || normalized._id || normalized.userId}')">Delete</button>
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.openUserModal('${user._id || user.userId}')">Edit</button>
           </td>
         </tr>
       `;
-    }).join('') || `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No users matched the filters.</td></tr>`;
+    }).join('');
+  }
+
+  async function saveUserLocally(payload, internalId) {
+    const users = getLocalUsers();
+    const normalizedPayload = {
+      ...payload,
+      role: String(payload.role || 'servant').toLowerCase(),
+      status: payload.status || 'active',
+      assignedPonds: Array.isArray(payload.assignedPonds) ? payload.assignedPonds : (payload.assignedPonds ? String(payload.assignedPonds).split(',').map(v => v.trim()).filter(Boolean) : [])
+    };
+    if (internalId) {
+      const existingIndex = users.findIndex(user => user._id === internalId || user.userId === internalId);
+      if (existingIndex >= 0) {
+        users[existingIndex] = {
+          ...users[existingIndex],
+          ...normalizedPayload,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    } else {
+      const newUser = {
+        _id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        userId: normalizedPayload.userId || generateNextLocalUserId(users),
+        username: String(normalizedPayload.username || '').toLowerCase().trim(),
+        email: String(normalizedPayload.email || '').toLowerCase().trim(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLogin: '',
+        ...normalizedPayload
+      };
+      users.unshift(newUser);
+    }
+    setLocalUsers(users);
+    state.users = users.map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
   }
 
   window.AQUA_APP.refreshUsers = async function() {
-    if (state.user?.role !== 'owner') {
-      showToast('Only the owner can manage users.', 'error');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/users', { headers: getAuthHeaders() });
-      if (!res.ok) {
-        showToast('Unable to load users.', 'error');
-        return;
-      }
-      state.users = await res.json();
-      renderUsersTable();
-    } catch (e) {
-      showToast('Unable to load users.', 'error');
-    }
+    await loadUsers();
+    showToast('User list refreshed.');
   };
 
-  window.AQUA_APP.openUserModal = function(user = null) {
-    if (state.user?.role !== 'owner') {
-      showToast('Only the owner can manage users.', 'error');
-      return;
-    }
+  window.AQUA_APP.exportUsersCSV = function() {
+    const rows = [['User ID','Full Name','Role','Mobile','Username','Email','Status','Created At','Last Login']];
+    applyUserFilters(state.users).forEach(user => {
+      rows.push([
+        user.userId || '',
+        user.name || '',
+        user.role || '',
+        user.mobileNumber || '',
+        user.username || '',
+        user.email || '',
+        user.status || '',
+        user.createdAt ? new Date(user.createdAt).toLocaleString() : '',
+        user.lastLogin ? new Date(user.lastLogin).toLocaleString() : ''
+      ]);
+    });
+    const csv = rows.map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'users_export.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
+  window.AQUA_APP.openUserModal = function(userId) {
     const modal = document.getElementById('userManagementModal');
-    if (!modal) return;
+    const title = modal?.querySelector('.modal-header h3');
+    const form = document.getElementById('userManagementForm');
+    if (!modal || !form) return;
 
-    const submitBtn = document.getElementById('userFormSubmitBtn');
-    const normalized = user ? (window.AQUA_USER_UTILS ? window.AQUA_USER_UTILS.normalizeUserRecord(user, user?.uid || user?.id) : user) : null;
-    const normalizedStatus = normalized?.isSuspended ? 'suspended' : (normalized?.isActive === false ? 'inactive' : (normalized?.status || 'active'));
-
-    document.getElementById('userFormUserId').value = normalized?.id || normalized?._id || normalized?.userId || '';
-    document.getElementById('userFormName').value = normalized?.fullName || normalized?.name || '';
-    document.getElementById('userFormMobile').value = normalized?.mobile || '';
-    document.getElementById('userFormUsername').value = normalized?.username || '';
-    document.getElementById('userFormEmail').value = normalized?.email || '';
-    document.getElementById('userFormRole').value = normalized?.role || 'servant';
-    document.getElementById('userFormUserId').setAttribute('placeholder', 'Leave blank to auto-create a new user ID');
-    document.getElementById('userFormAssignedPonds').value = (normalized?.assignedPonds || []).join(', ');
-    document.getElementById('userFormPhoto').value = normalized?.profilePhoto || normalized?.photo || '';
-    document.getElementById('userFormStatus').value = normalizedStatus;
-    document.getElementById('userFormPassword').value = '';
-    document.getElementById('userFormForceChange').checked = Boolean(normalized?.requiresPasswordChange || normalized?.forcePasswordChange);
-    document.getElementById('userFormNotes').value = normalized?.accountNotes || '';
-    submitBtn.textContent = normalized ? 'Save User' : 'Create User';
+    const targetUser = userId ? state.users.find(u => u._id === userId || u.userId === userId || u.username === userId) : null;
+    if (targetUser) {
+      if (title) title.textContent = 'Edit User';
+      document.getElementById('userFormInternalId').value = targetUser._id || targetUser.userId || '';
+      document.getElementById('userFormUserId').value = targetUser.userId || '';
+      document.getElementById('userFormName').value = targetUser.name || '';
+      document.getElementById('userFormMobile').value = targetUser.mobileNumber || '';
+      document.getElementById('userFormUsername').value = targetUser.username || '';
+      document.getElementById('userFormEmail').value = targetUser.email || '';
+      document.getElementById('userFormRole').value = targetUser.role || 'servant';
+      document.getElementById('userFormAssignedPonds').value = (targetUser.assignedPonds || []).join(', ');
+      document.getElementById('userFormPhoto').value = targetUser.profilePhoto || '';
+      document.getElementById('userFormStatus').value = targetUser.status || 'active';
+      document.getElementById('userFormPassword').value = '';
+      document.getElementById('userFormForceChange').checked = Boolean(targetUser.forcePasswordChange);
+      document.getElementById('userFormNotes').value = targetUser.accountNotes || '';
+    } else {
+      if (title) title.textContent = 'Add New User';
+      form.reset();
+      document.getElementById('userFormInternalId').value = '';
+      document.getElementById('userFormStatus').value = 'active';
+      document.getElementById('userFormRole').value = 'servant';
+    }
     modal.classList.add('open');
   };
 
-  window.AQUA_APP.deleteUser = async function(userId) {
-    if (state.user?.role !== 'owner') {
-      showToast('Only the owner can manage users.', 'error');
-      return;
-    }
-    if (!confirm('Delete this user?')) return;
+  window.AQUA_APP.editUser = function(userId) {
+    window.AQUA_APP.openUserModal(userId);
+  };
 
+  function getUserRequestHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('manthena_aqua_jwt');
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  async function submitUserFormLocally(payload, internalId) {
+    await saveUserLocally(payload, internalId);
+    document.getElementById('userManagementModal')?.classList.remove('open');
+    showToast(`User ${internalId ? 'updated' : 'created'} locally.`);
+  }
+
+  async function fetchWithFallback(url, options) {
     try {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
+      const response = await fetch(url, options);
+      if (!response.ok) throw new Error('API request failed');
+      return response;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  function syncUserFromFormResponse(payload, internalId) {
+    saveUserLocally(payload, internalId);
+  }
+
+  async function handleUserSaveRequest(payload, internalId) {
+    try {
+      const method = internalId ? 'PUT' : 'POST';
+      const endpoint = internalId ? `/api/users/${internalId}` : '/api/users';
+      const res = await fetch(endpoint, {
+        method,
+        headers: getUserRequestHeaders(),
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        showToast('Unable to delete user.', 'error');
-        return;
+        throw new Error('Server rejected user save request');
       }
-      showToast('User deleted successfully.');
-      await window.AQUA_APP.refreshUsers();
-    } catch (e) {
-      showToast('Unable to delete user.', 'error');
+      await loadUsers();
+      document.getElementById('userManagementModal')?.classList.remove('open');
+      showToast(`User ${internalId ? 'updated' : 'created'} successfully.`);
+    } catch (err) {
+      await submitUserFormLocally(payload, internalId);
     }
+  }
+
+  window.AQUA_APP.refreshUsers = async function() {
+    await loadUsers();
+    showToast('User list refreshed.');
   };
+
+  document.getElementById('userSearchInput')?.addEventListener('input', (e) => {
+    state.userFilters.query = e.target.value || '';
+    renderUsersTable();
+  });
+
+  document.getElementById('userRoleFilter')?.addEventListener('change', (e) => {
+    state.userFilters.role = e.target.value;
+    renderUsersTable();
+  });
+
+  document.getElementById('userStatusFilter')?.addEventListener('change', (e) => {
+    state.userFilters.status = e.target.value;
+    renderUsersTable();
+  });
 
   document.getElementById('userManagementForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -651,7 +784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const form = document.getElementById('userManagementForm');
+    const internalId = document.getElementById('userFormInternalId').value.trim();
     const userId = document.getElementById('userFormUserId').value.trim();
     const name = document.getElementById('userFormName').value.trim();
     const mobileNumber = document.getElementById('userFormMobile').value.trim();
@@ -670,17 +803,372 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (!userId && !password) {
-      showToast('A password is required when creating a new user.', 'error');
-      return;
-    }
-
-    if (!userId && !name) {
+    if (!name) {
       showToast('Name is required when creating a new user.', 'error');
       return;
     }
 
-    if (!userId && !username) {
+    if (!username) {
+      showToast('Username is required when creating a new user.', 'error');
+      return;
+    }
+
+    const payload = {
+      userId,
+      name,
+      email,
+      mobileNumber,
+      username,
+      role,
+      assignedPonds,
+      profilePhoto,
+      forcePasswordChange,
+      accountNotes,
+      isActive: status === 'active',
+      isSuspended: status === 'suspended'
+    };
+
+    if (password) payload.password = password;
+
+    await handleUserSaveRequest(payload, internalId);
+    await loadUsers();
+  });
+
+  function renderUsersTable() {
+    const tableBody = document.getElementById('usersTableBody');
+    if (!tableBody) return;
+    const filtered = applyUserFilters(state.users);
+    if (!filtered.length) {
+      tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:1rem; color:var(--text-dim);">No users found.</td></tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = filtered.map(user => {
+      const statusLabel = user.status === 'active' ? 'Active' : user.status === 'suspended' ? 'Suspended' : 'Inactive';
+      return `
+        <tr>
+          <td>${user.userId || ''}</td>
+          <td>${user.name || ''}</td>
+          <td>${user.role || ''}</td>
+          <td>${user.mobileNumber || ''}</td>
+          <td>${user.username || ''}</td>
+          <td>${statusLabel}</td>
+          <td>${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}</td>
+          <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : ''}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.openUserModal('${user._id || user.userId}')">Edit</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function loadUsers() {
+    let users = [];
+    try {
+      const token = localStorage.getItem('manthena_aqua_jwt');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch('/api/users', { headers });
+      if (res.ok) {
+        users = await res.json();
+      } else {
+        users = getLocalUsers();
+      }
+    } catch (err) {
+      users = getLocalUsers();
+    }
+
+    state.users = (users || []).map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
+  }
+
+  function saveUserLocally(payload, internalId) {
+    const users = getLocalUsers();
+    const normalizedPayload = {
+      ...payload,
+      role: String(payload.role || 'servant').toLowerCase(),
+      status: payload.status || 'active',
+      assignedPonds: Array.isArray(payload.assignedPonds) ? payload.assignedPonds : (payload.assignedPonds ? String(payload.assignedPonds).split(',').map(v => v.trim()).filter(Boolean) : [])
+    };
+    if (internalId) {
+      const existingIndex = users.findIndex(user => user._id === internalId || user.userId === internalId);
+      if (existingIndex >= 0) {
+        users[existingIndex] = {
+          ...users[existingIndex],
+          ...normalizedPayload,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    } else {
+      const newUser = {
+        _id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        userId: normalizedPayload.userId || generateNextLocalUserId(users),
+        username: String(normalizedPayload.username || '').toLowerCase().trim(),
+        email: String(normalizedPayload.email || '').toLowerCase().trim(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLogin: '',
+        ...normalizedPayload
+      };
+      users.unshift(newUser);
+    }
+    setLocalUsers(users);
+    state.users = users.map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
+  }
+
+  window.AQUA_APP.openUserModal = function(userId) {
+    const modal = document.getElementById('userManagementModal');
+    const title = modal?.querySelector('.modal-header h3');
+    const form = document.getElementById('userManagementForm');
+    if (!modal || !form) return;
+
+    const targetUser = userId ? state.users.find(u => u._id === userId || u.userId === userId || u.username === userId) : null;
+    if (targetUser) {
+      if (title) title.textContent = 'Edit User';
+      document.getElementById('userFormInternalId').value = targetUser._id || targetUser.userId || '';
+      document.getElementById('userFormUserId').value = targetUser.userId || '';
+      document.getElementById('userFormName').value = targetUser.name || '';
+      document.getElementById('userFormMobile').value = targetUser.mobileNumber || '';
+      document.getElementById('userFormUsername').value = targetUser.username || '';
+      document.getElementById('userFormEmail').value = targetUser.email || '';
+      document.getElementById('userFormRole').value = targetUser.role || 'servant';
+      document.getElementById('userFormAssignedPonds').value = (targetUser.assignedPonds || []).join(', ');
+      document.getElementById('userFormPhoto').value = targetUser.profilePhoto || '';
+      document.getElementById('userFormStatus').value = targetUser.status || 'active';
+      document.getElementById('userFormPassword').value = '';
+      document.getElementById('userFormForceChange').checked = Boolean(targetUser.forcePasswordChange);
+      document.getElementById('userFormNotes').value = targetUser.accountNotes || '';
+    } else {
+      if (title) title.textContent = 'Add New User';
+      form.reset();
+      document.getElementById('userFormInternalId').value = '';
+      document.getElementById('userFormStatus').value = 'active';
+      document.getElementById('userFormRole').value = 'servant';
+    }
+    modal.classList.add('open');
+  };
+
+  document.getElementById('userSearchInput')?.addEventListener('input', (e) => {
+    state.userFilters.query = e.target.value || '';
+    renderUsersTable();
+  });
+
+  document.getElementById('userRoleFilter')?.addEventListener('change', (e) => {
+    state.userFilters.role = e.target.value;
+    renderUsersTable();
+  });
+
+  document.getElementById('userStatusFilter')?.addEventListener('change', (e) => {
+    state.userFilters.status = e.target.value;
+    renderUsersTable();
+  });
+
+  window.AQUA_APP.refreshUsers = async function() {
+    await loadUsers();
+    showToast('User list refreshed.');
+  };
+
+  window.AQUA_APP.exportUsersCSV = function() {
+    const rows = [['User ID','Full Name','Role','Mobile','Username','Email','Status','Created At','Last Login']];
+    applyUserFilters(state.users).forEach(user => {
+      rows.push([
+        user.userId || '',
+        user.name || '',
+        user.role || '',
+        user.mobileNumber || '',
+        user.username || '',
+        user.email || '',
+        user.status || '',
+        user.createdAt ? new Date(user.createdAt).toLocaleString() : '',
+        user.lastLogin ? new Date(user.lastLogin).toLocaleString() : ''
+      ]);
+    });
+    const csv = rows.map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'users_export.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  async function handleUserSaveRequest(payload, internalId) {
+    try {
+      const method = internalId ? 'PUT' : 'POST';
+      const endpoint = internalId ? `/api/users/${internalId}` : '/api/users';
+      const res = await fetch(endpoint, {
+        method,
+        headers: getUserRequestHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        await loadUsers();
+        document.getElementById('userManagementModal')?.classList.remove('open');
+        showToast(`User ${internalId ? 'updated' : 'created'} successfully.`);
+        return;
+      }
+      throw new Error('Server rejected user save request');
+    } catch (err) {
+      await saveUserLocally(payload, internalId);
+      document.getElementById('userManagementModal')?.classList.remove('open');
+      showToast(`User ${internalId ? 'updated' : 'created'} locally.`);
+    }
+  }
+
+  function getUserRequestHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('manthena_aqua_jwt');
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  async function loadUsers() {
+    let users = [];
+    try {
+      const token = localStorage.getItem('manthena_aqua_jwt');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch('/api/users', { headers });
+      if (res.ok) {
+        users = await res.json();
+      } else {
+        users = getLocalUsers();
+      }
+    } catch (err) {
+      users = getLocalUsers();
+    }
+
+    state.users = (users || []).map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
+  }
+
+  function saveUserLocally(payload, internalId) {
+    const users = getLocalUsers();
+    const normalizedPayload = {
+      ...payload,
+      role: String(payload.role || 'servant').toLowerCase(),
+      status: payload.status || 'active',
+      assignedPonds: Array.isArray(payload.assignedPonds) ? payload.assignedPonds : (payload.assignedPonds ? String(payload.assignedPonds).split(',').map(v => v.trim()).filter(Boolean) : [])
+    };
+    if (internalId) {
+      const existingIndex = users.findIndex(user => user._id === internalId || user.userId === internalId);
+      if (existingIndex >= 0) {
+        users[existingIndex] = {
+          ...users[existingIndex],
+          ...normalizedPayload,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    } else {
+      const newUser = {
+        _id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        userId: normalizedPayload.userId || generateNextLocalUserId(users),
+        username: String(normalizedPayload.username || '').toLowerCase().trim(),
+        email: String(normalizedPayload.email || '').toLowerCase().trim(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLogin: '',
+        ...normalizedPayload
+      };
+      users.unshift(newUser);
+    }
+    setLocalUsers(users);
+    state.users = users.map(normalizeUserRecord);
+    renderUsersTable();
+    return state.users;
+  }
+
+  window.AQUA_APP.openUserModal = function(userId) {
+    const modal = document.getElementById('userManagementModal');
+    const title = modal?.querySelector('.modal-header h3');
+    const form = document.getElementById('userManagementForm');
+    if (!modal || !form) return;
+
+    const targetUser = userId ? state.users.find(u => u._id === userId || u.userId === userId || u.username === userId) : null;
+    if (targetUser) {
+      if (title) title.textContent = 'Edit User';
+      document.getElementById('userFormInternalId').value = targetUser._id || targetUser.userId || '';
+      document.getElementById('userFormUserId').value = targetUser.userId || '';
+      document.getElementById('userFormName').value = targetUser.name || '';
+      document.getElementById('userFormMobile').value = targetUser.mobileNumber || '';
+      document.getElementById('userFormUsername').value = targetUser.username || '';
+      document.getElementById('userFormEmail').value = targetUser.email || '';
+      document.getElementById('userFormRole').value = targetUser.role || 'servant';
+      document.getElementById('userFormAssignedPonds').value = (targetUser.assignedPonds || []).join(', ');
+      document.getElementById('userFormPhoto').value = targetUser.profilePhoto || '';
+      document.getElementById('userFormStatus').value = targetUser.status || 'active';
+      document.getElementById('userFormPassword').value = '';
+      document.getElementById('userFormForceChange').checked = Boolean(targetUser.forcePasswordChange);
+      document.getElementById('userFormNotes').value = targetUser.accountNotes || '';
+    } else {
+      if (title) title.textContent = 'Add New User';
+      form.reset();
+      document.getElementById('userFormInternalId').value = '';
+      document.getElementById('userFormStatus').value = 'active';
+      document.getElementById('userFormRole').value = 'servant';
+    }
+    modal.classList.add('open');
+  };
+
+  window.AQUA_APP.editUser = function(userId) {
+    window.AQUA_APP.openUserModal(userId);
+  };
+
+  document.getElementById('userSearchInput')?.addEventListener('input', (e) => {
+    state.userFilters.query = e.target.value || '';
+    renderUsersTable();
+  });
+
+  document.getElementById('userRoleFilter')?.addEventListener('change', (e) => {
+    state.userFilters.role = e.target.value;
+    renderUsersTable();
+  });
+
+  document.getElementById('userStatusFilter')?.addEventListener('change', (e) => {
+    state.userFilters.status = e.target.value;
+    renderUsersTable();
+  });
+
+  document.getElementById('userManagementForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (state.user?.role !== 'owner') {
+      showToast('Only the owner can manage users.', 'error');
+      return;
+    }
+
+    const internalId = document.getElementById('userFormInternalId').value.trim();
+    const userId = document.getElementById('userFormUserId').value.trim();
+    const name = document.getElementById('userFormName').value.trim();
+    const mobileNumber = document.getElementById('userFormMobile').value.trim();
+    const username = document.getElementById('userFormUsername').value.trim();
+    const email = document.getElementById('userFormEmail').value.trim();
+    const role = document.getElementById('userFormRole').value;
+    const assignedPonds = document.getElementById('userFormAssignedPonds').value.split(',').map(v => v.trim()).filter(Boolean);
+    const profilePhoto = document.getElementById('userFormPhoto').value.trim();
+    const status = document.getElementById('userFormStatus').value;
+    const password = document.getElementById('userFormPassword').value.trim();
+    const forcePasswordChange = document.getElementById('userFormForceChange').checked;
+    const accountNotes = document.getElementById('userFormNotes').value.trim();
+
+    if (!email) {
+      showToast('Email is required to save the user.', 'error');
+      return;
+    }
+
+    if (!name) {
+      showToast('Name is required when creating a new user.', 'error');
+      return;
+    }
+
+    if (!username) {
       showToast('Username is required when creating a new user.', 'error');
       return;
     }
@@ -703,84 +1191,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (password) payload.password = password;
 
     try {
-      const method = userId ? 'PUT' : 'POST';
-      const url = userId ? `/api/users/${userId}` : '/api/users';
-      const res = await fetch(url, {
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showToast(data.message || 'Unable to save user.', 'error');
-        return;
-      }
-      showToast(data.message || 'User saved successfully.');
-      document.getElementById('userManagementModal').classList.remove('open');
-      form.reset();
-      await window.AQUA_APP.refreshUsers();
-    } catch (e) {
-      showToast('Unable to save user.', 'error');
+      await handleUserSaveRequest(payload, internalId);
+    } catch (err) {
+      await saveUserLocally(payload, internalId);
+      document.getElementById('userManagementModal')?.classList.remove('open');
+      showToast(`User ${internalId ? 'updated' : 'created'} locally.`);
     }
   });
-
-  document.getElementById('userSearchInput')?.addEventListener('input', renderUsersTable);
-  document.getElementById('userRoleFilter')?.addEventListener('change', renderUsersTable);
-  document.getElementById('userStatusFilter')?.addEventListener('change', renderUsersTable);
-
-  document.getElementById('feedStockForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (state.user?.role !== 'owner') {
-      showToast('Only the owner can update feed stock details.', 'error');
-      return;
-    }
-
-    const select = document.getElementById('feedStockSelect');
-    const productCode = select?.value || '';
-    const bagsInStock = parseInt(document.getElementById('feedStockBagsInput').value || '0', 10);
-    const kgPerBag = parseInt(document.getElementById('feedStockKgPerBagInput').value || '0', 10);
-    const alertLevelBags = parseInt(document.getElementById('feedStockAlertInput').value || '0', 10);
-
-    const feedStock = toArray(state.feedStock);
-    const existingIndex = feedStock.findIndex(item => (item.code || item.brand) === productCode);
-    const existingItem = existingIndex >= 0 ? feedStock[existingIndex] : { code: productCode, brand: productCode };
-    const updatedItem = {
-      ...existingItem,
-      code: productCode,
-      brand: productCode,
-      bagsInStock,
-      kgPerBag,
-      alertLevelBags,
-      updatedAt: new Date().toISOString(),
-      savedBy: state.user?.name || 'Owner'
-    };
-
-    if (existingIndex >= 0) {
-      feedStock[existingIndex] = updatedItem;
-    } else {
-      feedStock.push(updatedItem);
-    }
-
-    state.feedStock = feedStock;
-    await window.AQUA_STORAGE.saveFeedStock(feedStock);
-    renderStockManagement();
-    showToast('Feed stock inventory updated.');
-  });
-
-  function applyRolePermissions() {
-    if (!state.user) return;
-    const role = state.user.role;
-    document.querySelectorAll('.owner-only').forEach(el => {
-      el.style.display = (role === 'owner') ? '' : 'none';
-    });
-    document.querySelectorAll('.supervisor-only').forEach(el => {
-      el.style.display = (role === 'owner' || role === 'supervisor') ? '' : 'none';
-    });
-
-    if (role === 'servant' && (state.activeTab === 'dashboard' || state.activeTab === 'stock')) {
-      switchTab('servant-feeding');
-    }
-  }
 
   function renderKPIs() {
     const container = document.getElementById('dashboardTopKpiGrid');
@@ -798,10 +1215,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pendingFeeds = Math.max(0, totalExpectedFeeds - completedFeeds);
 
     const cards = [
-      { title: t('totalPonds', 'Total Ponds'), value: totalPonds, subtitle: t('registeredPonds', 'Registered ponds') },
-      { title: t('activePonds', 'Active Ponds'), value: `${activePonds} ${t('activePonds', 'Active')}`, subtitle: t('currentlyActive', 'Currently active') },
-      { title: t('feedGivenToday', 'Feed Given Today'), value: `${totalFeedKg.toFixed(1)} KG`, subtitle: t('servantSubmissions', 'Servant submissions') },
-      { title: t('feedCompletion', 'Feed Completion'), value: `${feedCompletionRate}%`, subtitle: `${pendingFeeds} ${t('feedsPending', 'feeds pending')}` }
+      { title: 'Total Ponds', value: totalPonds, subtitle: 'Registered ponds' },
+      { title: 'Active Ponds', value: `${activePonds} Active`, subtitle: 'Currently active' },
+      { title: 'Feed Given Today', value: `${totalFeedKg.toFixed(1)} KG`, subtitle: 'Servant submissions' },
+      { title: 'Feed Completion', value: `${feedCompletionRate}%`, subtitle: `${pendingFeeds} feeds pending` }
     ];
 
     container.innerHTML = cards.map(card => `
@@ -860,35 +1277,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           <div class="pond-details-body">
             <div class="detail-item">
-              <span class="detail-label">${t('docDays', 'DOC (Days)')}</span>
+              <span class="detail-label">DOC (Days)</span>
               <span class="detail-val doc-highlight">DOC ${p.doc}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">${t('stockingDate', 'Stocking Date')}</span>
+              <span class="detail-label">Stocking Date</span>
               <span class="detail-val">${p.stockingDate || 'N/A'}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">${t('supervisorLabel', 'Supervisor')}</span>
+              <span class="detail-label">Supervisor</span>
               <span class="detail-val">${p.supervisor || 'Unassigned'}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">${t('servantLabel', 'Servant')}</span>
+              <span class="detail-label">Servant</span>
               <span class="detail-val">${p.servant || 'Unassigned'}</span>
             </div>
           </div>
 
           <div class="feed-schedule-row">
             <div class="feed-schedule-header">
-              <span>${t('todaysFeedingSchedule', "Today's Feeding Schedule")}</span>
+              <span>Today's Feeding Schedule</span>
               <span>${todayLogs.length}/4 Done</span>
             </div>
             <div class="feed-slots-grid">${slotHtml}</div>
           </div>
 
           <div class="pond-card-actions" onclick="event.stopPropagation();">
-            <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.openPondDetails('${pid}')"><i class="fas fa-chart-line"></i> ${t('details', 'Details')}</button>
-            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.editPond('${pid}')"><i class="fas fa-edit"></i> ${t('edit', 'Edit')}</button>
-            <button class="btn btn-danger btn-sm owner-only" onclick="window.AQUA_APP.deletePond('${pid}')"><i class="fas fa-trash"></i> ${t('delete', 'Delete')}</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.openPondDetails('${pid}')"><i class="fas fa-chart-line"></i> Details</button>
+            <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.editPond('${pid}')"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-danger btn-sm owner-only" onclick="window.AQUA_APP.deletePond('${pid}')"><i class="fas fa-trash"></i></button>
           </div>
         </div>
       `;
@@ -911,9 +1328,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>${p.servant || 'Unassigned'}</td>
             <td><strong>${totalFeed} KG</strong> (${todayLogs.length}/4)</td>
             <td>
-              <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.openPondDetails('${pid}')">${t('view', 'View')}</button>
-              <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.editPond('${pid}')">${t('edit', 'Edit')}</button>
-              <button class="btn btn-danger btn-sm owner-only" onclick="window.AQUA_APP.deletePond('${pid}')">${t('delete', 'Delete')}</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.AQUA_APP.openPondDetails('${pid}')">View</button>
+              <button class="btn btn-secondary btn-sm owner-only" onclick="window.AQUA_APP.editPond('${pid}')">Edit</button>
+              <button class="btn btn-danger btn-sm owner-only" onclick="window.AQUA_APP.deletePond('${pid}')">Delete</button>
             </td>
           </tr>
         `;
@@ -984,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       const displayList = fallback.length ? fallback : state.ponds;
       if (!displayList.length) {
-        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">${t('noActivePonds', 'No active ponds available.')}</div>`;
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">No active ponds available.</div>`;
         return;
       }
       const fallbackHtml = displayList.map(p => {
@@ -1035,16 +1452,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div class="pond-details-body" style="margin-bottom:0;">
             <div class="detail-item">
-              <span class="detail-label">${t('docDays', 'DOC (Days)')}</span>
+              <span class="detail-label">DOC (Days)</span>
               <span class="detail-val doc-highlight">DOC ${p.doc}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">${t('assignedServant', 'Assigned Servant')}</span>
+              <span class="detail-label">Assigned Servant</span>
               <span class="detail-val">${p.servant || 'Unassigned'}</span>
             </div>
           </div>
           <div style="margin-top:0.85rem; text-align:right;">
-            <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">${t('openConsole', 'Open Console')} <i class="fas fa-arrow-right"></i></span>
+            <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">Open Console <i class="fas fa-arrow-right"></i></span>
           </div>
         </div>
       `;
@@ -1079,10 +1496,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Refresh metrics & logs
     // Load per-pond saved panel data then render panels and logs
-    loadServantPanelDataForPond(pondId).then(() => {
+    loadServantPanelDataForPond(pondId).then(async () => {
       renderServantQuickParameters(pondId);
       renderServantHistoryLogs(pondId);
       renderServantOperationalPanels();
+      renderServantExpenseSection();
+      const expensePondSelect = document.getElementById('expensePondSelect');
+      if (expensePondSelect) {
+        expensePondSelect.value = pondId;
+      }
     });
   };
 
@@ -1093,6 +1515,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterBars = document.querySelectorAll('#tab-servant-feeding .filter-bar');
     filterBars.forEach(b => b.style.display = 'flex');
     renderServantPonds();
+  };
+
+  function renderOwnerQuickEntries() {
+    const rowsBody = document.getElementById('ownerQuickEntriesTableBody');
+    if (!rowsBody) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const rows = toArray(state.feedLogs).filter(log => log.date === todayStr).map(log => {
+      const pond = state.ponds.find(p => (p.pondId || p.id) === log.pondId) || {};
+      const water = toArray(state.waterLogs).filter(w => w.pondId === log.pondId && w.date === todayStr).slice(-1)[0] || {};
+      const mortality = toArray(state.mortalityLogs).filter(m => m.pondId === log.pondId && m.date === todayStr).reduce((sum, item) => sum + (parseInt(item.count, 10) || 0), 0);
+      return `<tr>
+        <td>${pond.pondId || pond.id || log.pondId}</td>
+        <td>${log.date}</td>
+        <td>${log.feedQtyKg || 0} KG</td>
+        <td>${water.ph || '-'} pH / ${water.do || '-'} DO</td>
+        <td>${mortality}</td>
+        <td><button class="btn btn-secondary btn-sm" type="button" onclick="window.AQUA_APP.editOwnerEntry('${log.pondId}')"><i class="fas fa-edit"></i></button></td>
+      </tr>`;
+    });
+    rowsBody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="6" style="text-align:center; padding:1rem; color:var(--text-dim);">No entries today yet.</td></tr>`;
+  }
+
+  window.AQUA_APP.editOwnerEntry = function(pondId) {
+    const latestFeed = toArray(state.feedLogs).filter(log => log.pondId === pondId).slice(-1)[0];
+    const latestWater = toArray(state.waterLogs).filter(log => log.pondId === pondId).slice(-1)[0];
+    const latestMortality = toArray(state.mortalityLogs).filter(log => log.pondId === pondId).slice(-1)[0];
+    const pondSelect = document.getElementById('ownerQuickPondSelect');
+    if (pondSelect) pondSelect.value = pondId;
+    const feedInput = document.getElementById('ownerQuickFeedInput');
+    if (feedInput) feedInput.value = latestFeed?.feedQtyKg || '';
+    const phInput = document.getElementById('ownerQuickPhInput');
+    if (phInput) phInput.value = latestWater?.ph || '7.8';
+    const doInput = document.getElementById('ownerQuickDoInput');
+    if (doInput) doInput.value = latestWater?.do || '6.0';
+    const tempInput = document.getElementById('ownerQuickTempInput');
+    if (tempInput) tempInput.value = latestWater?.temperature || '28.5';
+    const mortalityInput = document.getElementById('ownerQuickMortalityInput');
+    if (mortalityInput) mortalityInput.value = latestMortality?.count || '0';
+    const remarksInput = document.getElementById('ownerQuickRemarksInput');
+    if (remarksInput) remarksInput.value = latestFeed?.notes || latestWater?.notes || latestMortality?.notes || '';
+    state.currentQuickEntryId = pondId;
+    showToast('Owner quick entry loaded for editing.');
   };
 
   function renderServantQuickParameters(pondId) {
@@ -1189,6 +1653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const newLog = {
+      id: state.currentFeedEditId || `fl_${Date.now()}`,
       pondId: pondId,
       date: todayStr,
       slot: state.selectedFeedSlot,
@@ -1202,26 +1667,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      const feedLogResponse = await fetch('/api/feed-logs', {
+      await fetch('/api/feed-logs', {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newLog)
       });
-
-      if (!feedLogResponse.ok) {
-        const errorPayload = await feedLogResponse.json().catch(() => ({}));
-        throw new Error(errorPayload.message || 'Feed log save was rejected by the server.');
-      }
-    } catch (e) {
-      showToast(e.message || 'Unable to save feed log to the server.', 'error');
-      return;
-    }
+    } catch(e) {}
 
     await window.AQUA_STORAGE.saveFeedLog(newLog);
     showToast(`Feed update recorded for ${pondId} (${state.selectedFeedSlot}: ${feedQtyKg} KG)`);
     
     document.getElementById('servantFeedQty').value = '';
     document.getElementById('servantNotes').value = '';
+    state.currentFeedEditId = null;
     await loadData();
     renderServantHistoryLogs(pondId);
   }
@@ -1292,6 +1750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nitrate = parseFloat(document.getElementById('servantNitrateInput').value);
 
     const newWq = {
+      id: state.currentWaterEditId || `wq_${Date.now()}`,
       pondId: pondId,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1315,6 +1774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await window.AQUA_STORAGE.saveWaterLog(newWq);
     showToast(`Water quality log saved for ${pondId}`);
+    state.currentWaterEditId = null;
     await loadData();
     renderServantQuickParameters(pondId);
     renderServantHistoryLogs(pondId);
@@ -1371,6 +1831,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const calculatedBiomassKg = Math.round((currentSurvivalCount * abw) / 1000);
 
     const newGr = {
+      id: state.currentGrowthEditId || `gr_${Date.now()}`,
       pondId: pondId,
       doc: pond ? pond.doc : 60,
       abw: abw,
@@ -1390,6 +1851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await window.AQUA_STORAGE.saveGrowthLog(newGr);
     showToast(`Shrimp growth sampling recorded for ${pondId}`);
+    state.currentGrowthEditId = null;
     await loadData();
   }
 
@@ -1406,6 +1868,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const todayStr = new Date().toISOString().split('T')[0];
     const newMort = {
+      id: state.currentMortalityEditId || `mort_${Date.now()}`,
       pondId,
       date: todayStr,
       count,
@@ -1450,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('servantMortalityCount').value = '';
     document.getElementById('servantMortalityNotes').value = '';
+    state.currentMortalityEditId = null;
     await loadData();
   }
 
@@ -1678,29 +2142,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function renderStockManagement() {
     const container = document.getElementById('stockGridContainer');
-    const select = document.getElementById('feedStockSelect');
     if (!container) return;
 
-    const feedStock = toArray(state.feedStock);
-    if (select) {
-      const currentValue = select.value || (feedStock[0] && (feedStock[0].code || feedStock[0].brand)) || '';
-      select.innerHTML = feedStock.length
-        ? feedStock.map(item => `<option value="${item.code || item.brand}">${item.brand || item.code}</option>`).join('')
-        : '<option value="">No feed stock found</option>';
-      if (currentValue) select.value = currentValue;
-    }
-
-    container.innerHTML = feedStock.map(s => {
-      const isLow = Number(s.bagsInStock || 0) <= Number(s.alertLevelBags || 0);
+    container.innerHTML = state.feedStock.map(s => {
+      const isLow = s.bagsInStock <= s.alertLevelBags;
       return `
         <div class="kpi-card ${isLow ? 'rose' : 'emerald'}">
           <div class="kpi-header">
-            <span>${s.brand || s.code || 'Feed Stock'}</span>
+            <span>${s.brand}</span>
             <i class="fas fa-boxes kpi-icon"></i>
           </div>
-          <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${s.code || s.brand || 'N/A'}</div>
-          <div class="kpi-value" style="margin-top:0.5rem;">${Number(s.bagsInStock || 0)} <span style="font-size:1rem; font-weight:500;">Bags</span></div>
-          <div class="kpi-subtitle">${Number(s.bagsInStock || 0) * Number(s.kgPerBag || 0)} Total KG</div>
+          <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${s.code}</div>
+          <div class="kpi-value" style="margin-top:0.5rem;">${s.bagsInStock} <span style="font-size:1rem; font-weight:500;">Bags</span></div>
+          <div class="kpi-subtitle">${s.bagsInStock * s.kgPerBag} Total KG</div>
         </div>
       `;
     }).join('');
@@ -1719,17 +2173,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const todayFeed = todayFeedLogs.reduce((sum, log) => sum + (parseFloat(log.feedQtyKg) || 0), 0);
     const savedPanel = pondId ? await window.AQUA_STORAGE.getServantPanelData(pondId) : null;
 
-    const feedByPondSummary = Object.entries(
-      todayFeedLogs.reduce((acc, log) => {
-        acc[log.pondId] = (acc[log.pondId] || 0) + (parseFloat(log.feedQtyKg) || 0);
-        return acc;
-      }, {})
-    ).map(([pondId, qty]) => `${pondId}: ${Number(qty).toFixed(1)} KG`).join(' • ') || 'No feed entries today';
-
-    const feedingTimeHistory = todayFeedLogs.length
-      ? todayFeedLogs.slice(0, 4).map(log => `${log.pondId} ${log.slot} (${Number(log.feedQtyKg || 0).toFixed(1)} KG)`).join(' • ')
-      : 'No feeding history';
-
     const defaults = {
       feedStockTotal: 500,
       feedAddedToday: 0,
@@ -1737,74 +2180,63 @@ document.addEventListener('DOMContentLoaded', async () => {
       aeratorTotal: 6,
       aeratorRunning: 5,
       shrimpInitial: 400000,
-      mortalityCount: toArray(state.mortalityLogs).reduce((sum, item) => sum + (parseInt(item.count || item.mortalityCount || 0, 10) || 0), 0),
-      dailyFeedGivenToday: `${todayFeed.toFixed(1)} KG`,
-      feedByPondSummary,
-      feedingTimeHistory,
-      totalFeedConsumption: `${todayFeed.toFixed(1)} KG`
+      mortalityCount: toArray(state.mortalityLogs).reduce((sum, item) => sum + (parseInt(item.count || item.mortalityCount || 0, 10) || 0), 0)
     };
 
     const panel = Object.assign({}, defaults, savedPanel || {});
     panel.feedRemaining = Math.max((Number(panel.feedStockTotal) || 0) + (Number(panel.feedAddedToday) || 0) - (Number(panel.feedUsedToday) || 0), 0);
     panel.aeratorStopped = Math.max((Number(panel.aeratorTotal) || 0) - (Number(panel.aeratorRunning) || 0), 0);
     panel.aeratorStatus = panel.aeratorStopped === 0 ? 'ON' : 'WARNING';
-    panel.currentEstimatedCount = Math.max((Number(panel.shrimpInitial) || 0) - (Number(panel.mortalityCount) || 0), 0);
-    panel.survivalPercentage = panel.shrimpInitial ? Math.round((panel.currentEstimatedCount / panel.shrimpInitial) * 100) : 0;
-    panel.dailyFeedGivenToday = panel.dailyFeedGivenToday || `${todayFeed.toFixed(1)} KG`;
-    panel.feedByPondSummary = panel.feedByPondSummary || feedByPondSummary;
-    panel.feedingTimeHistory = panel.feedingTimeHistory || feedingTimeHistory;
-    panel.totalFeedConsumption = panel.totalFeedConsumption || `${todayFeed.toFixed(1)} KG`;
-    const currentEstimatedCount = panel.currentEstimatedCount;
-    const survivalPercentage = panel.survivalPercentage;
+    const currentEstimatedCount = Math.max((Number(panel.shrimpInitial) || 0) - (Number(panel.mortalityCount) || 0), 0);
+    const survivalPercentage = panel.shrimpInitial ? Math.round((currentEstimatedCount / panel.shrimpInitial) * 100) : 0;
 
     function kpiCardHtml(title, iconClass, valueHtml, subtitle, key) {
-      const canEditCard = ['owner', 'supervisor'].includes((state.user && state.user.role) || '');
-      const editBtn = key && canEditCard ? `<button class="card-edit-btn" data-key="${key}" aria-label="${t('edit', 'Edit')}"><i class="fas fa-edit"></i></button>` : '';
+      const editBtn = key ? `<button class="card-edit-btn" data-key="${key}" aria-label="Edit"><i class="fas fa-edit"></i></button>` : '';
       return `<div class="kpi-card"><div class="kpi-header"><span>${title}</span><i class="${iconClass}"></i>${editBtn}</div><div class="kpi-value" data-key-value="${key || ''}">${valueHtml}</div><div class="kpi-subtitle">${subtitle}</div></div>`;
     }
 
     if (servantSummary) {
       servantSummary.innerHTML = `
-        ${kpiCardHtml(t('totalFeedStock', 'Total Feed Stock'), 'fas fa-boxes', `${panel.feedStockTotal} KG`, t('storeAvailability', 'Store availability'), 'feedStockTotal')}
-        ${kpiCardHtml(t('remainingFeedStock', 'Remaining Feed Stock'), 'fas fa-warehouse', `${panel.feedRemaining} KG`, t('currentReserve', 'Current reserve'), null)}
-        ${kpiCardHtml(t('runningAerators', 'Running Aerators'), 'fas fa-fan', `${panel.aeratorRunning}`, `${panel.aeratorStopped} ${t('stopped', 'stopped')}`, 'aeratorRunning')}
-        ${kpiCardHtml(t('totalAerators', 'Total Aerators'), 'fas fa-fan', `${panel.aeratorTotal}`, t('installedUnits', 'Installed units'), 'aeratorTotal')}
+        ${kpiCardHtml('Total Feed Stock', 'fas fa-boxes', `${panel.feedStockTotal} KG`, 'Store availability', 'feedStockTotal')}
+        ${kpiCardHtml('Remaining Feed Stock', 'fas fa-warehouse', `${panel.feedRemaining} KG`, 'Current reserve', null)}
+        ${kpiCardHtml('Running Aerators', 'fas fa-fan', `${panel.aeratorRunning}`, `${panel.aeratorStopped} stopped`, 'aeratorRunning')}
+        ${kpiCardHtml('Total Aerators', 'fas fa-fan', `${panel.aeratorTotal}`, 'Installed units', 'aeratorTotal')}
       `;
     }
 
     if (aeratorPanel) {
       aeratorPanel.innerHTML = `
-        ${kpiCardHtml(t('totalAeratorsInstalled', 'Total Aerators Installed'), 'fas fa-fan', panel.aeratorTotal, t('installedUnits', 'Installed units'), 'aeratorTotal')}
-        ${kpiCardHtml(t('runningAerators', 'Running Aerators'), 'fas fa-power-off', panel.aeratorRunning, t('operational', 'Operational'), 'aeratorRunning')}
-        ${kpiCardHtml('Stopped Aerators', 'fas fa-stop-circle', panel.aeratorStopped, t('needsInspection', 'Needs inspection'), null)}
-        ${kpiCardHtml(t('status', 'Status'), 'fas fa-broadcast-tower', panel.aeratorStatus, panel.aeratorStatus === 'ON' ? t('allAeratorsNormal', 'All aerators normal') : t('alertRaised', 'Alert raised'), null)}
+        ${kpiCardHtml('Total Aerators Installed', 'fas fa-fan', panel.aeratorTotal, 'Installed units', 'aeratorTotal')}
+        ${kpiCardHtml('Running Aerators', 'fas fa-power-off', panel.aeratorRunning, 'Operational', 'aeratorRunning')}
+        ${kpiCardHtml('Stopped Aerators', 'fas fa-stop-circle', panel.aeratorStopped, 'Needs inspection', null)}
+        ${kpiCardHtml('Status', 'fas fa-broadcast-tower', panel.aeratorStatus, panel.aeratorStatus === 'ON' ? 'All aerators normal' : 'Alert raised', null)}
       `;
     }
 
     if (stockPanel) {
       stockPanel.innerHTML = `
-        ${kpiCardHtml(t('totalFeedStockAvailable', 'Total Feed Stock Available'), 'fas fa-box-open', `${panel.feedStockTotal} KG`, t('warehouseBalance', 'Warehouse balance'), 'feedStockTotal')}
-        ${kpiCardHtml(t('feedAddedToday', 'Feed Added Today'), 'fas fa-plus-circle', `${panel.feedAddedToday} KG`, t('addedToday', 'Added today'), 'feedAddedToday')}
-        ${kpiCardHtml(t('feedUsedToday', 'Feed Used Today'), 'fas fa-weight-hanging', `${Number(panel.feedUsedToday || 0).toFixed(1)} KG`, t('todayConsumption', 'Today consumption'), 'feedUsedToday')}
-        ${kpiCardHtml(t('remainingFeedStock', 'Remaining Feed Stock'), 'fas fa-warehouse', `${panel.feedRemaining} KG`, panel.feedRemaining < 120 ? t('urgentRefillRequired', 'Urgent refill required') : t('stableReserve', 'Stable reserve'), null)}
+        ${kpiCardHtml('Total Feed Stock Available', 'fas fa-box-open', `${panel.feedStockTotal} KG`, 'Warehouse balance', 'feedStockTotal')}
+        ${kpiCardHtml('Feed Added Today', 'fas fa-plus-circle', `${panel.feedAddedToday} KG`, 'Added today', 'feedAddedToday')}
+        ${kpiCardHtml('Feed Used Today', 'fas fa-weight-hanging', `${panel.feedUsedToday.toFixed(1)} KG`, 'Today consumption', 'feedUsedToday')}
+        ${kpiCardHtml('Remaining Feed Stock', 'fas fa-warehouse', `${panel.feedRemaining} KG`, panel.feedRemaining < 120 ? 'Urgent refill required' : 'Stable reserve', null)}
       `;
     }
 
     if (shrimpPanel) {
       shrimpPanel.innerHTML = `
-        ${kpiCardHtml(t('totalShrimpCount', 'Total Shrimp Count'), 'fas fa-fish', Number(panel.shrimpInitial || 0), t('initialStock', 'Initial stock'), 'shrimpInitial')}
-        ${kpiCardHtml(t('currentEstimatedCount', 'Current Estimated Count'), 'fas fa-chart-line', Number(panel.currentEstimatedCount || 0), t('afterMortality', 'After mortality'), null)}
-        ${kpiCardHtml(t('mortalityCount', 'Mortality Count'), 'fas fa-skull-crossbones', Number(panel.mortalityCount || 0), t('recordedLosses', 'Recorded losses'), 'mortalityCount')}
-        ${kpiCardHtml(t('survivalPercentage', 'Survival Percentage'), 'fas fa-percentage', `${panel.survivalPercentage}%`, t('liveShrimpRate', 'Live shrimp rate'), null)}
+        ${kpiCardHtml('Total Shrimp Count', 'fas fa-fish', panel.shrimpInitial, 'Initial stock', 'shrimpInitial')}
+        ${kpiCardHtml('Current Estimated Count', 'fas fa-chart-line', currentEstimatedCount, 'After mortality', null)}
+        ${kpiCardHtml('Mortality Count', 'fas fa-skull-crossbones', panel.mortalityCount || 0, 'Recorded losses', 'mortalityCount')}
+        ${kpiCardHtml('Survival Percentage', 'fas fa-percentage', `${survivalPercentage}%`, 'Live shrimp rate', null)}
       `;
     }
 
     if (dailyFeedPanel) {
       dailyFeedPanel.innerHTML = `
-        ${kpiCardHtml(t('feedGivenToday', 'Feed Given Today'), 'fas fa-weight-hanging', panel.dailyFeedGivenToday || `${todayFeed.toFixed(1)} KG`, t('acrossAllPonds', 'Across all ponds'), 'dailyFeedGivenToday')}
-        ${kpiCardHtml(t('feedGivenToEachPond', 'Feed Given to Each Pond'), 'fas fa-water', panel.feedByPondSummary || feedByPondSummary, t('recentPondTotals', 'Recent pond totals'), 'feedByPondSummary')}
-        ${kpiCardHtml(t('feedingTimeHistory', 'Feeding Time History'), 'fas fa-history', panel.feedingTimeHistory || feedingTimeHistory, t('recentSchedule', 'Recent schedule'), 'feedingTimeHistory')}
-        ${kpiCardHtml(t('totalFeedConsumption', 'Total Feed Consumption'), 'fas fa-chart-bar', panel.totalFeedConsumption || `${todayFeed.toFixed(1)} KG`, t('dailyTotal', 'Daily total'), 'totalFeedConsumption')}
+        ${kpiCardHtml('Total Feed Given Today', 'fas fa-weight-hanging', `${todayFeed.toFixed(1)} KG`, 'Across all ponds', null)}
+        ${kpiCardHtml('Feed Entries Today', 'fas fa-water', `${todayFeedLogs.length}`, 'Entries today', null)}
+        ${kpiCardHtml('Feeding Time History', 'fas fa-history', `${todayFeedLogs.map(log => log.timestamp).slice(0,3).join(', ') || 'None'}`, 'Recent schedule', null)}
+        ${kpiCardHtml('Total Feed Consumption', 'fas fa-chart-bar', `${todayFeed.toFixed(1)} KG`, 'Daily total', null)}
       `;
       renderDailyFeedSummary();
     }
@@ -1829,10 +2261,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function openInlineCardEditor(card, key) {
     if (!card || !key) return false;
-    if (!canEditDashboardCards()) {
-      showToast(t('onlyOwnerSupervisorCanEdit', 'Only owner or supervisor can edit these card values.'), 'error');
-      return false;
-    }
     const valueEl = card.querySelector('.kpi-value');
     if (!valueEl) return false;
     if (card.querySelector('.card-editor')) return false;
@@ -1903,10 +2331,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Save from inline editor
     const saveInline = e.target.closest && e.target.closest('.card-save-btn');
     if (saveInline) {
-      if (!canEditDashboardCards()) {
-        showToast(t('onlyOwnerSupervisorCanEdit', 'Only owner or supervisor can edit these card values.'), 'error');
-        return;
-      }
       const card = e.target.closest('.kpi-card');
       if (!card) return;
       const key = card.querySelector('.kpi-header button')?.getAttribute('data-key');
@@ -1955,7 +2379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const stopped = Math.max(total - running, 0);
       const status = stopped === 0 ? 'ON' : 'WARNING';
       const payload = { pondId, total, running, stopped, status, updatedAt: new Date().toISOString(), savedBy: state.user ? state.user.name : 'Servant' };
-      await window.AQUA_STORAGE.saveDashboardCollectionEntry('aerators', pondId, payload);
+      // Save locally
+      const aerKey = `manthena_aqua_aerators_${pondId}`;
+      localStorage.setItem(aerKey, JSON.stringify(payload));
+      // Save to Firestore if available
+      if (window.AQUA_STORAGE.isFirebase && window.AQUA_STORAGE.isFirebase()) {
+        try { await firebase.firestore().collection('aerators').doc(pondId).set(payload); } catch(e) {}
+      }
       document.getElementById('aeratorStoppedInput').value = stopped;
       document.getElementById('aeratorStatusInput').value = status;
       document.getElementById('aeratorSaveMsg').textContent = 'Saved';
@@ -1970,10 +2400,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (total < 0 || added < 0 || used < 0) { showToast('Feed quantity cannot be negative', 'error'); return; }
       const remaining = Math.max(total + added - used, 0);
       const payload = { pondId, total, added, used, remaining, updatedAt: new Date().toISOString(), savedBy: state.user ? state.user.name : 'Servant' };
-      await window.AQUA_STORAGE.saveDashboardCollectionEntry('feedStock', pondId, payload);
+      const feedKey = `manthena_aqua_feedstock_${pondId}`;
+      localStorage.setItem(feedKey, JSON.stringify(payload));
+      if (window.AQUA_STORAGE.isFirebase && window.AQUA_STORAGE.isFirebase()) {
+        try { await firebase.firestore().collection('feedStock').doc(pondId).set(payload); } catch(e) {}
+      }
       document.getElementById('feedRemainingInput').value = remaining;
       document.getElementById('feedStockSaveMsg').textContent = 'Saved';
       showToast('Feed stock saved');
+      // Refresh summary
       renderDailyFeedSummary();
     }
 
@@ -2020,23 +2455,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('ownerOpsSummaryCards');
     if (!container) return;
 
-    const pondId = state.selectedPondId || (state.ponds[0] && (state.ponds[0].pondId || state.ponds[0].id));
     const urgentCount = toArray(state.ownerNotifications).length;
     const todayFeedLogs = toArray(state.feedLogs).filter(log => log.date === new Date().toISOString().split('T')[0]);
-    const savedPanel = pondId ? (JSON.parse(localStorage.getItem(`manthena_aqua_panel_${pondId}`) || 'null') || {}) : {};
-    const feedStockTotal = Number(savedPanel.feedStockTotal || 500);
-    const feedAddedToday = Number(savedPanel.feedAddedToday || 0);
-    const feedUsedToday = Number(savedPanel.feedUsedToday || todayFeedLogs.reduce((sum, log) => sum + (parseFloat(log.feedQtyKg) || 0), 0));
-    const remainingFeed = Math.max(feedStockTotal + feedAddedToday - feedUsedToday, 0);
-    const mortalityCount = Number(savedPanel.mortalityCount || toArray(state.mortalityLogs).reduce((sum, item) => sum + (parseInt(item.count || item.mortalityCount || 0, 10) || 0), 0));
-    const shrimpInitial = Number(savedPanel.shrimpInitial || 400000);
-    const currentEstimatedCount = Math.max(shrimpInitial - mortalityCount, 0);
-    const runningAerators = Number(savedPanel.aeratorRunning || 5);
+    const remainingFeed = Math.max(500 - todayFeedLogs.reduce((sum, log) => sum + (parseFloat(log.feedQtyKg) || 0), 0), 0);
+    const mortalityCount = toArray(state.mortalityLogs).reduce((sum, item) => sum + (parseInt(item.count || item.mortalityCount || 0, 10) || 0), 0);
+    const currentEstimatedCount = Math.max(400000 - mortalityCount, 0);
+    const runningAerators = 5;
 
     container.innerHTML = `
-      <div class="kpi-card emerald"><div class="kpi-header"><span>Total Feed Stock</span><i class="fas fa-boxes"></i></div><div class="kpi-value">${feedStockTotal} KG</div><div class="kpi-subtitle">Warehouse stock</div></div>
+      <div class="kpi-card emerald"><div class="kpi-header"><span>Total Feed Stock</span><i class="fas fa-boxes"></i></div><div class="kpi-value">500 KG</div><div class="kpi-subtitle">Warehouse stock</div></div>
       <div class="kpi-card amber"><div class="kpi-header"><span>Remaining Feed Stock</span><i class="fas fa-warehouse"></i></div><div class="kpi-value">${remainingFeed} KG</div><div class="kpi-subtitle">Low threshold 120 KG</div></div>
-      <div class="kpi-card amber"><div class="kpi-header"><span>Feed Used Today</span><i class="fas fa-weight-hanging"></i></div><div class="kpi-value">${feedUsedToday.toFixed(1)} KG</div><div class="kpi-subtitle">Servant submissions</div></div>
+      <div class="kpi-card purple"><div class="kpi-header"><span>Total Seed Stock</span><i class="fas fa-seedling"></i></div><div class="kpi-value">2500</div><div class="kpi-subtitle">Seed units</div></div>
+      <div class="kpi-card emerald"><div class="kpi-header"><span>Remaining Seed Stock</span><i class="fas fa-seedling"></i></div><div class="kpi-value">1300</div><div class="kpi-subtitle">Available for stocking</div></div>
+      <div class="kpi-card amber"><div class="kpi-header"><span>Feed Used Today</span><i class="fas fa-weight-hanging"></i></div><div class="kpi-value">${todayFeedLogs.reduce((sum, log) => sum + (parseFloat(log.feedQtyKg) || 0), 0).toFixed(1)} KG</div><div class="kpi-subtitle">Servant submissions</div></div>
       <div class="kpi-card purple"><div class="kpi-header"><span>Shrimp Count</span><i class="fas fa-fish"></i></div><div class="kpi-value">${currentEstimatedCount}</div><div class="kpi-subtitle">Live count</div></div>
       <div class="kpi-card emerald"><div class="kpi-header"><span>Running Aerators</span><i class="fas fa-fan"></i></div><div class="kpi-value">${runningAerators}</div><div class="kpi-subtitle">Operational</div></div>
       <div class="kpi-card rose"><div class="kpi-header"><span>Pending Alerts</span><i class="fas fa-bell"></i></div><div class="kpi-value">${urgentCount}</div><div class="kpi-subtitle">Owner action needed</div></div>
@@ -2503,13 +2934,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   function switchTab(tabId) {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content-section').forEach(s => s.classList.remove('active'));
-    
+
     const targetTabBtn = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
     const targetSection = document.getElementById(`tab-${tabId}`);
 
     if (targetTabBtn) targetTabBtn.classList.add('active');
     if (targetSection) targetSection.classList.add('active');
     state.activeTab = tabId;
+
+    if (tabId === 'servant-feeding') {
+      const pondGrid = document.getElementById('servantPondsGrid');
+      const consolePanel = document.getElementById('servantOperationsConsole');
+      if (pondGrid) pondGrid.style.display = 'grid';
+      if (consolePanel) consolePanel.style.display = 'none';
+    }
   }
 
   document.querySelectorAll('.nav-tab').forEach(tab => {

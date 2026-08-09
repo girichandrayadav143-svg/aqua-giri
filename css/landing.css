@@ -52,7 +52,7 @@ a {
   display: grid;
   place-items: center;
   padding: 2.5rem 1.5rem;
-  background: url('assets/farm_background.png') center center/cover no-repeat;
+  background: url('../css/assets/farm_background.png') center center/cover no-repeat;
   overflow: hidden;
   animation: backgroundFade 1.2s ease both;
 }
@@ -61,7 +61,7 @@ a {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0, 40, 80, 0.22);
+  background: linear-gradient(135deg, rgba(2, 24, 42, 0.62), rgba(6, 41, 76, 0.34));
   z-index: 1;
 }
 

@@ -9,6 +9,7 @@
 
   <!-- PWA Manifest & App Store Setup -->
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/farm_background.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/farm_background.png">
   
   <!-- Google Fonts & FontAwesome -->
@@ -38,29 +39,16 @@
         <p><span data-i18n="owner">Owner</span>: <strong>Bhatraju Raju</strong></p>
       </div>
 
-      <!-- Quick Demo Login Account Selector Pills -->
-      <div class="quick-login-pills">
-        <button class="quick-pill active" onclick="window.AQUA_APP.fillLogin('manthena', 'owner123')">
-          <i class="fas fa-crown"></i> <span data-i18n="owner">Owner</span>
-        </button>
-        <button class="quick-pill" onclick="window.AQUA_APP.fillLogin('rajesh', 'super123')">
-          <i class="fas fa-user-check"></i> <span data-i18n="supervisor">Supervisor</span>
-        </button>
-        <button class="quick-pill" onclick="window.AQUA_APP.fillLogin('ramu', 'servant123')">
-          <i class="fas fa-hands-helping"></i> <span data-i18n="servant">Servant</span>
-        </button>
-      </div>
-
       <form id="loginForm">
         <div class="form-group" style="margin-bottom:1.1rem;">
           <label for="loginUsername"><i class="fas fa-user"></i> <span data-i18n="usernameLabel">Username</span>:</label>
-          <input type="text" id="loginUsername" class="form-control" value="manthena" data-i18n-placeholder="loginUsername" placeholder="Enter username..." required style="padding:0.75rem;">
+          <input type="text" id="loginUsername" class="form-control" value="" data-i18n-placeholder="loginUsername" placeholder="enter your user name" required style="padding:0.75rem;">
         </div>
 
         <div class="form-group" style="margin-bottom:1.5rem;">
           <label for="loginPassword"><i class="fas fa-key"></i> <span data-i18n="passwordLabel">Password</span>:</label>
           <div style="position:relative;">
-            <input type="password" id="loginPassword" class="form-control" value="owner123" data-i18n-placeholder="loginPassword" placeholder="Enter password..." required style="padding:0.75rem;">
+            <input type="password" id="loginPassword" class="form-control" value="" data-i18n-placeholder="loginPassword" placeholder="enter your password" required style="padding:0.75rem;">
             <i class="fas fa-eye" id="togglePasswordBtn" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--text-muted);"></i>
           </div>
         </div>
@@ -122,16 +110,16 @@
       <!-- Navigation Tabs Bar -->
       <nav class="nav-tabs-wrapper">
         <button class="nav-tab active owner-only supervisor-only" data-tab="dashboard">
-          <i class="fas fa-chart-pie"></i> <span data-i18n="ownerDashboard">Executive Dashboard</span>
+          <i class="fas fa-chart-pie"></i> <span data-i18n="ownerDashboard">Owner Dashboard</span>
         </button>
         <button class="nav-tab" data-tab="ponds">
           <i class="fas fa-layer-group"></i> <span data-i18n="pondManagement">Pond Management</span>
         </button>
         <button class="nav-tab" data-tab="servant-feeding">
-          <i class="fas fa-utensils"></i> <span data-i18n="servantFeedingPortal">Servant Feeding Portal</span>
+          <i class="fas fa-utensils"></i> <span data-i18n="servantFeedingPortal">Servant Dashboard</span>
         </button>
         <button class="nav-tab supervisor-only" data-tab="supervisor">
-          <i class="fas fa-clipboard-list"></i> <span data-i18n="supervisorDashboard">Supervisor Monitoring</span>
+          <i class="fas fa-clipboard-list"></i> <span data-i18n="supervisorDashboard">Supervisor Dashboard</span>
         </button>
         <button class="nav-tab owner-only supervisor-only" data-tab="water-growth">
           <i class="fas fa-vial"></i> <span data-i18n="waterGrowthLogs">Water & Growth Logs</span>
@@ -155,7 +143,7 @@
       <section id="tab-dashboard" class="tab-content-section active">
         <div class="page-header">
           <div class="page-title">
-            <h2><i class="fas fa-tachometer-alt" style="color:var(--primary);"></i> Farm Overview Dashboard</h2>
+            <h2><i class="fas fa-tachometer-alt" style="color:var(--primary);"></i> Owner Dashboard</h2>
             <p>Real-time feed tracking, pond culture progress, and operational metrics.</p>
           </div>
           <div class="filter-group">
@@ -170,6 +158,64 @@
 
         <!-- KPI Grid -->
         <div class="kpi-grid" id="dashboardTopKpiGrid"></div>
+
+        <div class="content-panel" style="padding:1.25rem; margin:1.25rem 0 1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <div>
+              <h3 style="margin:0; color:var(--primary);"><i class="fas fa-edit"></i> <span data-i18n="ownerQuickEntries">Owner Quick Entry</span></h3>
+              <p style="margin:0.25rem 0 0; color:var(--text-secondary);" data-i18n="ownerQuickEntriesHint">Add or edit today's pond values from the owner dashboard.</p>
+            </div>
+          </div>
+          <form id="ownerQuickEntryForm" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.85rem;">
+            <div class="form-group">
+              <label for="ownerQuickPondSelect" data-i18n="selectPond">Select Pond</label>
+              <select id="ownerQuickPondSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="ownerQuickFeedInput" data-i18n="todaysFeedKg">Today's Feed (KG)</label>
+              <input type="number" step="0.5" id="ownerQuickFeedInput" class="form-control" placeholder="0.0">
+            </div>
+            <div class="form-group">
+              <label for="ownerQuickPhInput" data-i18n="waterPh">Water pH</label>
+              <input type="number" step="0.1" id="ownerQuickPhInput" class="form-control" value="7.8">
+            </div>
+            <div class="form-group">
+              <label for="ownerQuickDoInput" data-i18n="dissolvedOxygen">Dissolved Oxygen (DO)</label>
+              <input type="number" step="0.1" id="ownerQuickDoInput" class="form-control" value="6.0">
+            </div>
+            <div class="form-group">
+              <label for="ownerQuickTempInput" data-i18n="temperature">Temperature</label>
+              <input type="number" step="0.5" id="ownerQuickTempInput" class="form-control" value="28.5">
+            </div>
+            <div class="form-group">
+              <label for="ownerQuickMortalityInput" data-i18n="mortalityCount">Mortality Count</label>
+              <input type="number" step="1" id="ownerQuickMortalityInput" class="form-control" value="0">
+            </div>
+            <div class="form-group full-width">
+              <label for="ownerQuickRemarksInput" data-i18n="remarks">Remarks</label>
+              <input type="text" id="ownerQuickRemarksInput" class="form-control" placeholder="Updated by owner" data-i18n-placeholder="ownerEntryPlaceholder">
+            </div>
+            <div class="form-group full-width" style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <span data-i18n="saveValues">Save Values</span></button>
+              <button type="button" class="btn btn-secondary" id="ownerQuickResetBtn"><i class="fas fa-eraser"></i> <span data-i18n="clearForm">Clear Form</span></button>
+            </div>
+          </form>
+          <div class="table-responsive" style="margin-top:1rem;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="pondId">Pond ID</th>
+                  <th data-i18n="date">Date</th>
+                  <th data-i18n="feed">Feed</th>
+                  <th data-i18n="waterQuality">Water</th>
+                  <th data-i18n="mortality">Mortality</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ownerQuickEntriesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
 
         <div class="content-panel history-panel" id="dashboardHistoryPanel" style="margin-bottom: 2rem;"></div>
 
@@ -252,7 +298,7 @@
       <section id="tab-servant-feeding" class="tab-content-section">
         <div class="page-header">
           <div class="page-title">
-            <h2><i class="fas fa-hands-helping" style="color:var(--primary);"></i> Servant Workspace Console</h2>
+            <h2><i class="fas fa-hands-helping" style="color:var(--primary);"></i> Servant Dashboard</h2>
             <p>Select an assigned pond to update feed schedule, water quality parameters, daily checklists, and alerts.</p>
           </div>
         </div>
@@ -523,8 +569,12 @@
                 </div>
               </div>
 
-              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 0.9rem; font-size: 1.05rem;">
-                <i class="fas fa-paper-plane"></i> Submit Feed Record
+              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1.25rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="editLatestFeedBtn"><i class="fas fa-edit"></i> <span data-i18n="editLatestEntry">Edit Latest Entry</span></button>
+                <button type="button" class="btn btn-secondary btn-sm" id="resetFeedFormBtn"><i class="fas fa-eraser"></i> <span data-i18n="clearForm">Clear Form</span></button>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.9rem; font-size: 1.05rem;">
+                <i class="fas fa-paper-plane"></i> <span data-i18n="submitFeedRecord">Submit Feed Record</span>
               </button>
             </form>
           </div>
@@ -562,8 +612,12 @@
                   <input type="number" step="0.1" id="servantNitrateInput" class="form-control" value="4.5" required>
                 </div>
               </div>
-              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; padding: 0.9rem;">
-                <i class="fas fa-save"></i> Save Water Quality Log
+              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1.25rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="editLatestWaterBtn"><i class="fas fa-edit"></i> <span data-i18n="editLatestEntry">Edit Latest Entry</span></button>
+                <button type="button" class="btn btn-secondary btn-sm" id="resetWaterFormBtn"><i class="fas fa-eraser"></i> <span data-i18n="clearForm">Clear Form</span></button>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.9rem;">
+                <i class="fas fa-save"></i> <span data-i18n="saveWaterLog">Save Water Quality Log</span>
               </button>
             </form>
           </div>
@@ -585,7 +639,11 @@
                   <label for="servantWeeklyGrowth">Weekly Growth (grams):</label>
                   <input type="number" step="0.1" id="servantWeeklyGrowth" class="form-control" value="2.2" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Save Growth Data</button>
+                <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1rem;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="editLatestGrowthBtn"><i class="fas fa-edit"></i> <span data-i18n="editLatestEntry">Edit Latest Entry</span></button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="resetGrowthFormBtn"><i class="fas fa-eraser"></i> <span data-i18n="clearForm">Clear Form</span></button>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;"> <span data-i18n="saveGrowthData">Save Growth Data</span></button>
               </form>
 
               <form id="servantMortalityForm" class="panel-soft" style="padding: 1.25rem;">
@@ -607,7 +665,11 @@
                   <label for="servantMortalityNotes">Remarks / Actions Taken:</label>
                   <input type="text" id="servantMortalityNotes" class="form-control" placeholder="e.g. Cleared water margin, adjusted aerators">
                 </div>
-                <button type="submit" class="btn btn-danger" style="width: 100%; margin-top: 1rem;">Record Mortality</button>
+                <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1rem;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="editLatestMortalityBtn"><i class="fas fa-edit"></i> <span data-i18n="editLatestEntry">Edit Latest Entry</span></button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="resetMortalityFormBtn"><i class="fas fa-eraser"></i> <span data-i18n="clearForm">Clear Form</span></button>
+                </div>
+                <button type="submit" class="btn btn-danger" style="width: 100%; margin-top: 1rem;"><span data-i18n="recordMortality">Record Mortality</span></button>
               </form>
             </div>
 
@@ -1250,6 +1312,7 @@
       </div>
       <div class="modal-body">
         <form id="userManagementForm" class="form-grid">
+          <input type="hidden" id="userFormInternalId">
           <div class="form-group">
             <label for="userFormUserId">User ID</label>
             <input type="text" id="userFormUserId" class="form-control" placeholder="Leave blank to auto-generate">

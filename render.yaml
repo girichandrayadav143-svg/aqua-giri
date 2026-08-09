@@ -3,11 +3,14 @@ services:
     name: aqua-farming
     env: node
     plan: free
-    branch: main
-    root: .
     buildCommand: npm install
     startCommand: npm start
-    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

@@ -9,6 +9,7 @@ Production-grade MERN Stack web application and mobile app for **Bhatraju Raju**
 | Role | Name | Username | Password |
 | :--- | :--- | :--- | :--- |
 | **Owner** | Bhatraju Raju | `manthena` | `owner123` |
+| **Owner** | Giri | `giri` | `owner@123` |
 | **Supervisor** | Rajesh Kumar | `rajesh` | `super123` |
 | **Servant** | Ramu | `ramu` | `servant123` |
 
@@ -28,7 +29,10 @@ cd server
 npm install
 npm start
 ```
-3. Open your browser at **`http://localhost:5000`**.
+
+### Step 3: Open the Website
+1. Open your browser at **`http://localhost:5000/app.html`**.
+2. Use the demo login credentials below to sign in.
 
 ---
 

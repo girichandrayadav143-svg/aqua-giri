@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AQUA FARMING - Authentication</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="icon" type="image/png" href="assets/farm_background.png">
   <style>
     * {
       margin: 0;
@@ -574,6 +574,45 @@
     }
 
     /* Responsive */
+    @media (max-width: 1024px) {
+      .auth-container,
+      .home-content {
+        max-width: 90%;
+        margin: 0 auto;
+      }
+
+      .home-content {
+        padding: 45px 30px;
+      }
+
+      .auth-buttons {
+        flex-direction: column;
+      }
+
+      .btn-auth {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .auth-container {
+        padding: 28px;
+      }
+
+      .home-content {
+        padding: 40px 24px;
+      }
+
+      .auth-header h2 {
+        font-size: 1.85rem;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        font-size: 0.98rem;
+      }
+    }
+
     @media (max-width: 600px) {
       .auth-container {
         padding: 25px;
@@ -593,6 +632,20 @@
 
       .btn-auth {
         width: 100%;
+      }
+
+      .form-group label {
+        font-size: 0.92rem;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        padding: 11px 13px;
+      }
+
+      .form-footer,
+      .checkbox-group {
+        font-size: 0.92rem;
       }
 
       .requirements-list {
@@ -722,14 +775,14 @@
         <form id="loginForm" onsubmit="handleLogin(event)">
           <div class="form-group">
             <label for="credential">User ID or Username *</label>
-            <input type="text" id="credential" name="credential" placeholder="Enter your User ID or Username" required>
+            <input type="text" id="credential" name="credential" placeholder="enter your user name" required>
             <div id="credentialError" class="validation-message error" style="display:none;"></div>
           </div>
 
           <div class="form-group">
             <label for="loginPassword">Password *</label>
             <div class="password-toggle">
-              <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
+              <input type="password" id="loginPassword" name="loginPassword" placeholder="enter your password" required>
               <button type="button" class="password-toggle-btn" onclick="togglePassword('loginPassword')">👁️</button>
             </div>
             <div id="loginPasswordError" class="validation-message error" style="display:none;"></div>
