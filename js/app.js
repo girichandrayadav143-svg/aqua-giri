@@ -52,43 +52,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     { time: '04:00 PM', label: '4:00 PM Feed' }
   ];
 
-  function normalizeApiHost(hostname) {
-    if (!hostname || hostname === 'localhost' || hostname === '::1' || hostname === '[::1]' || hostname === '0.0.0.0') {
-      return '127.0.0.1';
+  // API base — uses current page origin (Express serves both frontend + API from same server).
+  // Falls back to localhost:5000 only when opened directly as a file:// URL.
+  function getApiBase() {
+    if (window.location.protocol === 'file:') {
+      return 'http://localhost:5000';
     }
-    return hostname;
+    return window.location.origin;
   }
 
-  async function resolveApiBase() {
-    if (window.location.protocol !== 'file:') {
-      const safeHost = normalizeApiHost(window.location.hostname);
-      const safePort = window.location.port || '5000';
-      return `http://${safeHost}:${safePort}`;
-    }
-
-    const ports = [5000, 5001, 5002, 5003, 5004, 5005, 3000, 8080];
-    for (const port of ports) {
-      try {
-        const probe = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
-          method: 'OPTIONS',
-          headers: { 'Content-Type': 'application/json' },
-          mode: 'cors'
-        });
-        if (probe && (probe.ok || probe.status === 400 || probe.status === 401 || probe.status === 404)) {
-          return `http://127.0.0.1:${port}`;
-        }
-      } catch (err) {
-        // Try the next port.
-      }
-    }
-
-    return 'http://127.0.0.1:5000';
-  }
+  // Kept async for backward-compat with any remaining callers
+  async function resolveApiBase() { return getApiBase(); }
 
   async function apiUrl(path) {
-    const base = await resolveApiBase();
+    const base = getApiBase();
     return `${base}${path.startsWith('/') ? path : `/${path}`}`;
   }
+
 
   const translations = {
     en: {
