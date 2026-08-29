@@ -1,4 +1,114 @@
 /* ============================================================
+   AUTH FORM — Login & Create Account Page Styles
+   ============================================================ */
+
+/* Field group: label + input + error stacked */
+.auth-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.auth-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Inputs — consistent height, width, style */
+.auth-input {
+  width: 100%;
+  height: 46px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface-soft);
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
+}
+
+.auth-input.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* Input wrapper for eye toggle button */
+.auth-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.auth-input-wrap .auth-input {
+  padding-right: 2.75rem;
+}
+
+/* Eye (show/hide password) button */
+.auth-eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+
+.auth-eye-btn:hover { color: var(--primary); }
+
+/* Inline field error messages */
+.auth-error {
+  font-size: 0.8rem;
+  color: var(--danger);
+  min-height: 1.1em;
+  display: block;
+  font-weight: 500;
+}
+
+/* Submit button — full width */
+.auth-submit-btn {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+/* Login card scroll on short screens */
+@media (max-height: 700px) {
+  .login-overlay-container {
+    align-items: flex-start;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .login-card { margin: 0 auto; }
+}
+
+@media (max-width: 480px) {
+  .login-card { padding: 1.25rem !important; }
+}
+
+/* ============================================================
    AQUA FARM — Responsive Layout Fix
    Fixes horizontal scrolling in Owner & Servant Dashboards.
    Adds proper row-wise grid wrapping for all card sections,

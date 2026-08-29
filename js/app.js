@@ -268,29 +268,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     return response;
   }
 
-  // ==================== AUTH TAB SWITCHING ====================
-  const authTabLogin = document.getElementById('authTabLogin');
-  const authTabRegister = document.getElementById('authTabRegister');
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
+  // ==================== AUTH TABS — Sign In / Create Account ====================
 
-  authTabLogin?.addEventListener('click', () => {
-    loginForm.style.display = 'block';
-    registerForm.style.display = 'none';
-    authTabLogin.style.borderBottomColor = '#0d9488';
-    authTabLogin.style.color = '#0d9488';
-    authTabRegister.style.borderBottomColor = 'transparent';
-    authTabRegister.style.color = '#999';
-  });
+  function setActiveAuthTab(tab) {
+    const loginForm    = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const tabLogin     = document.getElementById('authTabLogin');
+    const tabRegister  = document.getElementById('authTabRegister');
 
-  authTabRegister?.addEventListener('click', () => {
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
-    authTabRegister.style.borderBottomColor = '#0d9488';
-    authTabRegister.style.color = '#0d9488';
-    authTabLogin.style.borderBottomColor = 'transparent';
-    authTabLogin.style.color = '#999';
-  });
+    if (tab === 'login') {
+      loginForm.style.display    = 'block';
+      registerForm.style.display = 'none';
+      tabLogin.style.borderBottomColor = 'var(--primary)';
+      tabLogin.style.color             = 'var(--primary)';
+      tabRegister.style.borderBottomColor = 'transparent';
+      tabRegister.style.color             = 'var(--text-secondary)';
+    } else {
+      loginForm.style.display    = 'none';
+      registerForm.style.display = 'block';
+      tabRegister.style.borderBottomColor = 'var(--primary)';
+      tabRegister.style.color             = 'var(--primary)';
+      tabLogin.style.borderBottomColor = 'transparent';
+      tabLogin.style.color             = 'var(--text-secondary)';
+      // Always clear the register form when switching to it
+      clearRegisterForm();
+    }
+  }
+
+  function clearRegisterForm() {
+    ['regName','regEmail','regUsername','regPassword','regConfirmPassword'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.classList.remove('error'); }
+    });
+    ['regNameError','regEmailError','regUsernameError','regPasswordError','regConfirmPasswordError'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+  }
+
+  function setFieldError(inputId, errorId, message) {
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    if (input) input.classList.toggle('error', !!message);
+    if (error) error.textContent = message || '';
+  }
+
+  function clearFieldError(inputId, errorId) {
+    setFieldError(inputId, errorId, '');
+  }
+
+  document.getElementById('authTabLogin')?.addEventListener('click', () => setActiveAuthTab('login'));
+  document.getElementById('authTabRegister')?.addEventListener('click', () => setActiveAuthTab('register'));
+
+  // ==================== SHOW/HIDE PASSWORD TOGGLES ====================
+
+  function makePasswordToggle(btnId, inputId) {
+    const btn = document.getElementById(btnId);
+    const inp = document.getElementById(inputId);
+    if (!btn || !inp) return;
+    btn.addEventListener('click', () => {
+      const isHidden = inp.type === 'password';
+      inp.type = isHidden ? 'text' : 'password';
+      btn.querySelector('i').className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+    });
+  }
+
+  makePasswordToggle('togglePasswordBtn',            'loginPassword');
+  makePasswordToggle('toggleRegPasswordBtn',         'regPassword');
+  makePasswordToggle('toggleRegConfirmPasswordBtn',  'regConfirmPassword');
+
+  // Clear errors on typing
+  document.getElementById('regName')?.addEventListener('input',            () => clearFieldError('regName',            'regNameError'));
+  document.getElementById('regEmail')?.addEventListener('input',           () => clearFieldError('regEmail',           'regEmailError'));
+  document.getElementById('regUsername')?.addEventListener('input',        () => clearFieldError('regUsername',        'regUsernameError'));
+  document.getElementById('regPassword')?.addEventListener('input',        () => clearFieldError('regPassword',        'regPasswordError'));
+  document.getElementById('regConfirmPassword')?.addEventListener('input', () => clearFieldError('regConfirmPassword', 'regConfirmPasswordError'));
 
   function toArray(value) {
     return Array.isArray(value) ? value : [];
@@ -373,92 +425,122 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Registration Form Submission Handler
   document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const username = document.getElementById('regUsername').value.trim();
-    const password = document.getElementById('regPassword').value.trim();
-    const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
 
-    if (!name || !email || !username || !password || !confirmPassword) {
-      showToast('Please fill in all fields.', 'error');
-      return;
+    const name            = document.getElementById('regName').value.trim();
+    const email           = document.getElementById('regEmail').value.trim();
+    const username        = document.getElementById('regUsername').value.trim();
+    const password        = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+    // ── Client-side validation ──
+    let hasError = false;
+
+    if (!name) {
+      setFieldError('regName', 'regNameError', 'Full name is required.');
+      hasError = true;
     }
 
-    if (password !== confirmPassword) {
-      showToast('Passwords do not match.', 'error');
-      return;
+    if (!email) {
+      setFieldError('regEmail', 'regEmailError', 'Email address is required.');
+      hasError = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFieldError('regEmail', 'regEmailError', 'Please enter a valid email address.');
+      hasError = true;
     }
+
+    if (!username) {
+      setFieldError('regUsername', 'regUsernameError', 'Username is required.');
+      hasError = true;
+    }
+
+    if (!password) {
+      setFieldError('regPassword', 'regPasswordError', 'Password is required.');
+      hasError = true;
+    } else if (password.length < 8) {
+      setFieldError('regPassword', 'regPasswordError', 'Password must be at least 8 characters.');
+      hasError = true;
+    } else if (!/[A-Z]/.test(password)) {
+      setFieldError('regPassword', 'regPasswordError', 'Password must contain at least one uppercase letter (A-Z).');
+      hasError = true;
+    } else if (!/[a-z]/.test(password)) {
+      setFieldError('regPassword', 'regPasswordError', 'Password must contain at least one lowercase letter (a-z).');
+      hasError = true;
+    } else if (!/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      setFieldError('regPassword', 'regPasswordError', 'Password must contain at least one number or special character.');
+      hasError = true;
+    }
+
+    if (!confirmPassword) {
+      setFieldError('regConfirmPassword', 'regConfirmPasswordError', 'Please confirm your password.');
+      hasError = true;
+    } else if (password !== confirmPassword) {
+      setFieldError('regConfirmPassword', 'regConfirmPasswordError', 'Passwords do not match.');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    // ── Set button loading state ──
+    const btn = document.getElementById('createAccountBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...'; }
 
     try {
-      console.log('🔄 Attempting signup...', { name, email, username });
-
-      // Use relative URL — Express serves both frontend and API from same origin
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ name, email, username, password, confirmPassword })
       });
 
-      console.log('📥 Server response status:', res.status);
-
       let data;
-      try {
-        const responseText = await res.text();
-        console.log('📥 Server response text:', responseText);
-        data = JSON.parse(responseText);
-      } catch (jsonErr) {
-        console.error('❌ Failed to parse response:', jsonErr);
-        showToast('❌ Server error: Invalid response. Restart server and try again.', 'error');
-        return;
-      }
+      try { data = await res.json(); } catch { data = {}; }
 
       if (res.ok && data.token) {
-        console.log('✅ Account created successfully!');
+        // ── Success: save session & go to dashboard ──
         state.user = {
           username: data.user.username,
-          userId: data.user.userId,
-          role: data.user.role,
-          name: data.user.name,
-          email: data.user.email,
-          ownerId: data.user.ownerId,  // ← Multi-owner: new owner gets their own ownerId
-          token: data.token
+          userId:   data.user.userId,
+          role:     data.user.role,
+          name:     data.user.name,
+          email:    data.user.email,
+          ownerId:  data.user.ownerId,
+          token:    data.token
         };
-        localStorage.setItem('manthena_aqua_jwt', data.token);
+        localStorage.setItem('manthena_aqua_jwt',  data.token);
         localStorage.setItem('manthena_aqua_user', JSON.stringify(state.user));
-        showToast(`✅ Welcome, ${data.user.name}! Your account has been created.`);
-        document.getElementById('registerForm').reset();
+        clearRegisterForm();
+        showToast(`✅ Welcome, ${data.user.name}! Your farm workspace is ready.`);
         initAuthenticatedUI();
-      } else if (data.requirements) {
-        // Password requirements not met
-        console.warn('⚠️ Password requirements not met:', data.requirements);
-        const reqs = data.requirements;
-        let msg = '❌ Password must have:\n';
-        if (!reqs.minLength) msg += '• ❌ At least 8 characters\n';
-        else msg += '• ✅ At least 8 characters\n';
-        
-        if (!reqs.hasUppercase) msg += '• ❌ At least one UPPERCASE letter (A-Z)\n';
-        else msg += '• ✅ At least one UPPERCASE letter (A-Z)\n';
-        
-        if (!reqs.hasLowercase) msg += '• ❌ At least one lowercase letter (a-z)\n';
-        else msg += '• ✅ At least one lowercase letter (a-z)\n';
-        
-        if (!reqs.hasNumber && !reqs.hasSpecial) msg += '• ❌ At least one number (0-9) OR special character (!@#$%^&*)\n';
-        else msg += '• ✅ Has number or special character\n';
-        
-        showToast(msg, 'error');
+
       } else if (res.status === 409) {
-        console.warn('⚠️ Conflict - Username or email already exists');
-        showToast(data.message || '❌ Username or email already exists. Try different values.', 'error');
+        // Username or email already taken
+        const msg = (data.message || '').toLowerCase();
+        if (msg.includes('username')) {
+          setFieldError('regUsername', 'regUsernameError', 'Username already exists. Please choose another username.');
+        } else if (msg.includes('email')) {
+          setFieldError('regEmail', 'regEmailError', 'This email is already registered. Please use a different email.');
+        } else {
+          setFieldError('regUsername', 'regUsernameError', data.message || 'Username or email already exists.');
+        }
+
+      } else if (data.requirements) {
+        // Password strength failure from server
+        const r = data.requirements;
+        let pwMsg = 'Password requirements not met:';
+        if (!r.minLength)                      pwMsg += ' 8+ characters,';
+        if (!r.hasUppercase)                   pwMsg += ' one uppercase letter,';
+        if (!r.hasLowercase)                   pwMsg += ' one lowercase letter,';
+        if (!r.hasNumber && !r.hasSpecial)     pwMsg += ' one number or special character,';
+        setFieldError('regPassword', 'regPasswordError', pwMsg.replace(/,$/, '.'));
+
       } else {
-        console.error('❌ Registration failed:', res.status, data);
         showToast(`❌ ${data.message || 'Registration failed. Please try again.'}`, 'error');
       }
+
     } catch (err) {
-      console.error('❌ Registration network error:', err);
-      showToast(`❌ Connection error: ${err.message || 'Cannot reach server. Make sure it is running.'}\n\nStart server: npm start`, 'error');
+      console.error('Registration error:', err);
+      showToast('Connection error. Please check the server is running.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account'; }
     }
   });
 
