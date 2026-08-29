@@ -273,21 +273,6 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    // Check if password is already used by any existing user (disallow reuse)
-    const allUsers = isMongoReady() ? await User.find({}).lean() : inMemoryUsers;
-    for (const u of allUsers) {
-      const hashed = u.password || u.passwordHash || '';
-      try {
-        if (hashed && bcrypt.compareSync(password, hashed)) {
-          return res.status(400).json({ 
-            message: 'This password is already taken by another user. Please choose a different password.' 
-          });
-        }
-      } catch (e) {
-        // ignore malformed hashes
-      }
-    }
-
     // Generate unique User ID
     const userId = await generateUniqueUserId();
 
@@ -334,9 +319,6 @@ router.post('/signup', async (req, res) => {
       inMemoryUsers.push(savedUser);
       console.log('✅ User saved in memory fallback. ID:', savedUser.userId);
     }
-
-    // (Optional) Track used password hashes in memory for quick checks
-    try { usedPasswords.add(savedUser.password); } catch (e) {}
 
     // Create JWT token
     console.log('🔐 Creating JWT token...');
