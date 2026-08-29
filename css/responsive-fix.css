@@ -1,0 +1,410 @@
+/* ============================================================
+   AQUA FARM — Responsive Layout Fix
+   Fixes horizontal scrolling in Owner & Servant Dashboards.
+   Adds proper row-wise grid wrapping for all card sections,
+   charts, and tables. Does NOT remove any existing features.
+   ============================================================ */
+
+/* ── 1. GLOBAL OVERFLOW PREVENTION ───────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Every block-level element is capped at 100% width */
+.app-container,
+.app-main,
+.tab-content-section,
+.content-panel,
+.panel-soft,
+.page-header,
+.filter-bar,
+.form-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ── 2. KPI GRID — Row-wise auto-wrapping ─────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.15rem;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+/* ── 3. PONDS GRID — Row-wise auto-wrapping ───────────────── */
+.ponds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.15rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── 4. TWO & THREE COLUMN GRIDS ─────────────────────────── */
+.grid-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.15rem;
+  width: 100%;
+}
+
+.grid-three-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.15rem;
+  width: 100%;
+}
+
+.grid-column-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* ── 5. FEED SLOTS GRID — Fix fixed 4-col that causes overflow */
+.feed-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+/* ── 6. SLOT SELECTION GRID ───────────────────────────────── */
+.slot-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* ── 7. CONSUMPTION OPTIONS GRID ─────────────────────────── */
+.consumption-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* ── 8. FORM GRID ─────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+/* ── 9. CARDS — No fixed widths ───────────────────────────── */
+.kpi-card,
+.pond-card,
+.content-panel,
+.panel-soft {
+  width: 100%;
+  min-width: 0;        /* Allow shrinking inside grid cells */
+  max-width: 100%;
+}
+
+/* ── 10. TABLES — Scroll only inside container, never page ── */
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+}
+
+/* Prevent table from pushing the page wider */
+.table-responsive table {
+  min-width: 600px;   /* Safe minimum — scroll kicks in INSIDE container only */
+}
+
+table.data-table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+
+/* ── 11. CHARTS — Always fill available width ─────────────── */
+canvas {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Chart wrapper panels arranged side-by-side on desktop,
+   stacked on smaller screens */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+/* ── 12. FILTER BAR — Prevent overflow ───────────────────── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.filter-bar > * {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/* ── 13. HEADER CONTROLS — Wrap on smaller screens ───────── */
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* ── 14. PAGE HEADER — No fixed widths ───────────────────── */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* ── 15. INVESTMENT CARDS CONTAINER ──────────────────────── */
+#pondInvestmentsCardsContainer,
+#ownerInvestmentCard,
+#investmentSummaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+/* ── 16. SERVANT QUICK PARAMETERS ────────────────────────── */
+#servantQuickParameters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* ── 17. SERVANT HISTORY PANEL / CONTENT ─────────────────── */
+#servantSummaryCards,
+#servantAeratorPanel,
+#servantStockPanel,
+#servantShrimpPanel,
+#servantDailyFeedSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+/* ── 18. POND INVESTMENT KPI ──────────────────────────────── */
+#pondInvestmentSummaryKpi,
+#stockGridContainer,
+#expenseCategoryTotals,
+#investmentReportCards,
+#ownerOpsSummaryCards,
+#dashboardTopKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.15rem;
+  width: 100%;
+}
+
+/* ── 19. POND CARD ACTIONS — Wrap buttons ─────────────────── */
+.pond-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ── 20. MODAL CARD ───────────────────────────────────────── */
+.modal-card {
+  width: 100%;
+  max-width: 920px;
+  max-height: 90vh;
+}
+
+/* ============================================================
+   BREAKPOINTS
+   ============================================================ */
+
+/* ── TABLET (≤ 1024px): 2 cards per row ───────────────────── */
+@media (max-width: 1024px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ponds-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-two-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-three-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #servantSummaryCards,
+  #servantAeratorPanel,
+  #servantStockPanel,
+  #servantShrimpPanel,
+  #servantDailyFeedSummary,
+  #ownerOpsSummaryCards,
+  #dashboardTopKpiGrid,
+  #investmentReportCards,
+  #expenseCategoryTotals,
+  #stockGridContainer,
+  #pondInvestmentSummaryKpi {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── MOBILE (≤ 768px): 1 card per row ────────────────────── */
+@media (max-width: 768px) {
+  /* All grids collapse to single column */
+  .kpi-grid,
+  .ponds-grid,
+  .grid-two-col,
+  .grid-three-col,
+  .grid-column-2,
+  .form-grid,
+  .charts-row,
+  #servantSummaryCards,
+  #servantAeratorPanel,
+  #servantStockPanel,
+  #servantShrimpPanel,
+  #servantDailyFeedSummary,
+  #ownerOpsSummaryCards,
+  #dashboardTopKpiGrid,
+  #investmentReportCards,
+  #expenseCategoryTotals,
+  #stockGridContainer,
+  #pondInvestmentSummaryKpi,
+  #pondInvestmentsCardsContainer,
+  #ownerInvestmentCard,
+  #investmentSummaryCards {
+    grid-template-columns: 1fr;
+  }
+
+  /* Feed slots — 2 per row on mobile (not 4) */
+  .feed-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Slot selection — 2 per row */
+  .slot-selection-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Consumption options — 2 per row */
+  .consumption-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Servant quick params — 2 per row */
+  #servantQuickParameters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Buttons full width */
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Pond card actions — stack buttons */
+  .pond-card-actions {
+    flex-direction: column;
+  }
+
+  /* Tables */
+  table.data-table {
+    min-width: 540px;
+  }
+
+  /* Page main — full width minus safe margins */
+  main.app-main {
+    width: calc(100% - 1rem);
+    margin: 0.75rem auto 2rem;
+    padding: 0;
+  }
+
+  /* Header */
+  header.app-header {
+    width: calc(100% - 0.75rem);
+    padding: 0.85rem;
+  }
+
+  /* Filter bar stacks vertically */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box,
+  .filter-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* KPI value font size */
+  .kpi-value {
+    font-size: 1.7rem;
+  }
+
+  /* Content panels safe padding */
+  .content-panel,
+  .panel-soft {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+}
+
+/* ── SMALL MOBILE (≤ 480px) ───────────────────────────────── */
+@media (max-width: 480px) {
+  /* Single column for everything */
+  .feed-slots-grid,
+  .slot-selection-grid,
+  .consumption-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #servantQuickParameters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  .page-title h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Safe horizontal padding */
+  .content-panel,
+  .panel-soft,
+  .kpi-card,
+  .pond-card {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+}
