@@ -48,7 +48,14 @@ async function generateUniqueUserId() {
   const maxAttempts = 100;
   
   while (attempts < maxAttempts) {
-    const existing = await User.findOne({ userId });
+    let existing = false;
+
+    if (isMongoReady()) {
+      existing = !!(await User.findOne({ userId }));
+    } else {
+      existing = inMemoryUsers.some(u => u.userId === userId);
+    }
+
     if (!existing) {
       return userId;
     }
@@ -86,16 +93,19 @@ function validatePasswordStrength(password) {
 }
 
 // In-Memory Pre-seeded Users for Out-of-the-box instant running
+// In-Memory Pre-seeded Users for Out-of-the-box instant running
 const seedUsers = [
-  { username: 'manthena', userId: 'A7#d2!', passwordHash: bcrypt.hashSync('owner123', 8), name: 'Bhatraju Raju', email: 'owner@aquafarm.io', role: 'owner' },
-  { username: 'giri', userId: 'G1r!23', passwordHash: bcrypt.hashSync('owner@123', 8), name: 'Giri', email: 'giri@aquafarm.io', role: 'owner' },
-  { username: 'rajesh', userId: 'k9@P4$', passwordHash: bcrypt.hashSync('super123', 8), name: 'Rajesh Kumar', email: 'rajesh@aquafarm.io', role: 'supervisor' },
-  { username: 'ramu', userId: 'M&5xQ1', passwordHash: bcrypt.hashSync('servant123', 8), name: 'Ramu', email: 'ramu@aquafarm.io', role: 'servant' }
+
+  { username: 'manthena', userId: 'A7#d2!', passwordHash: bcrypt.hashSync('owner123', 8), name: 'Bhatraju Raju', email: 'owner@aquafarm.io', role: 'owner', ownerId: 'A7#d2!' },
+  { username: 'giri', userId: 'G1r!23', passwordHash: bcrypt.hashSync('owner@123', 8), name: 'Giri', email: 'giri@aquafarm.io', role: 'owner', ownerId: 'G1r!23' },
+  { username: 'rajesh', userId: 'k9@P4$', passwordHash: bcrypt.hashSync('super123', 8), name: 'Rajesh Kumar', email: 'rajesh@aquafarm.io', role: 'supervisor', ownerId: 'A7#d2!' },
+  { username: 'ramu', userId: 'M&5xQ1', passwordHash: bcrypt.hashSync('servant123', 8), name: 'Ramu', email: 'ramu@aquafarm.io', role: 'servant', ownerId: 'A7#d2!' }
 ];
 
 // Store for used passwords (in production, check against hashed DB values)
 const usedPasswords = new Set(seedUsers.map(u => u.passwordHash));
 const inMemoryUsers = [];
+global.inMemoryUsers = inMemoryUsers;
 
 function isMongoReady() {
   return mongoose.connection.readyState === 1;
@@ -128,6 +138,7 @@ function ensureSeedUsersInMemory() {
     const existing = getMemoryUserByQuery({ username: seedUser.username, email: seedUser.email, userId: seedUser.userId });
     if (existing) {
       existing.userId = existing.userId || seedUser.userId;
+      existing.ownerId = existing.ownerId || seedUser.ownerId;
       existing.name = existing.name || seedUser.name;
       existing.email = existing.email || seedUser.email;
       existing.password = existing.password || seedUser.passwordHash;
@@ -139,6 +150,7 @@ function ensureSeedUsersInMemory() {
     inMemoryUsers.push({
       _id: `memory-${seedUser.username}`,
       userId: seedUser.userId,
+      ownerId: seedUser.ownerId,
       username: seedUser.username.toLowerCase().trim(),
       email: seedUser.email,
       name: seedUser.name,
@@ -168,6 +180,7 @@ async function ensureSeedUsers() {
     const existing = await User.findOne({ username: seedUser.username.toLowerCase().trim() });
     if (existing) {
       existing.userId = existing.userId || seedUser.userId;
+      existing.ownerId = existing.ownerId || seedUser.ownerId;
       existing.name = existing.name || seedUser.name;
       existing.email = existing.email || seedUser.email;
       existing.password = existing.password || seedUser.passwordHash;
@@ -179,6 +192,7 @@ async function ensureSeedUsers() {
 
     const newUser = new User({
       userId: seedUser.userId,
+      ownerId: seedUser.ownerId,
       username: seedUser.username.toLowerCase().trim(),
       email: seedUser.email,
       name: seedUser.name,
@@ -198,11 +212,19 @@ async function ensureSeedUsers() {
  * Register a new user
  */
 router.post('/signup', async (req, res) => {
+  console.log('📨 Signup request received');
+  
+  // Set headers to ensure proper response
+  res.setHeader('Content-Type', 'application/json');
+  
   try {
     const { name, email, mobileNumber, username, password, confirmPassword } = req.body;
+    
+    console.log('📋 Validating input: name, email, username...');
 
     // Validate input
     if (!name || !email || !username || !password || !confirmPassword) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ 
         message: 'All required fields must be filled.' 
       });
@@ -232,7 +254,9 @@ router.post('/signup', async (req, res) => {
     }
 
     // Check if username already exists
-    const existingUsername = await User.findOne({ username: username.toLowerCase().trim() });
+    const existingUsername = isMongoReady()
+      ? await User.findOne({ username: username.toLowerCase().trim() })
+      : getMemoryUserByQuery({ username: username.toLowerCase().trim() });
     if (existingUsername) {
       return res.status(409).json({ 
         message: 'This username is already taken. Please choose another username.' 
@@ -240,7 +264,9 @@ router.post('/signup', async (req, res) => {
     }
 
     // Check if email already exists
-    const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
+    const existingEmail = isMongoReady()
+      ? await User.findOne({ email: email.toLowerCase().trim() })
+      : getMemoryUserByQuery({ email: email.toLowerCase().trim() });
     if (existingEmail) {
       return res.status(409).json({ 
         message: 'This email is already registered. Please use a different email.' 
@@ -268,50 +294,111 @@ router.post('/signup', async (req, res) => {
     // Create new user (password provided by the registering user)
     const newUser = new User({
       userId,
+      ownerId: userId, // Set ownerId same as userId for Owners
       username: username.toLowerCase().trim(),
       email: email.toLowerCase().trim(),
       name: name.trim(),
       mobileNumber: mobileNumber || '',
       password: bcrypt.hashSync(password, 8),
-      role: 'servant', // Default role
+      role: 'owner', // Default role for public registration is Owner
       registrationDate: new Date()
     });
 
-    await newUser.save();
+    let savedUser = null;
+    if (isMongoReady()) {
+      console.log('💾 Saving new user to database:', newUser.username);
+      savedUser = await newUser.save();
+      console.log('✅ User saved successfully. ID:', savedUser.userId);
+    } else {
+      savedUser = {
+        _id: `memory-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        userId,
+        ownerId: userId,
+        username: username.toLowerCase().trim(),
+        email: email.toLowerCase().trim(),
+        name: name.trim(),
+        mobileNumber: mobileNumber || '',
+        password: bcrypt.hashSync(password, 8),
+        role: 'owner',
+        registrationDate: new Date(),
+        isActive: true,
+        isSuspended: false,
+        forcePasswordChange: false,
+        assignedPonds: [],
+        profilePhoto: '',
+        accountNotes: '',
+        lastLogin: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      inMemoryUsers.push(savedUser);
+      console.log('✅ User saved in memory fallback. ID:', savedUser.userId);
+    }
 
     // (Optional) Track used password hashes in memory for quick checks
-    try { usedPasswords.add(newUser.password); } catch (e) {}
+    try { usedPasswords.add(savedUser.password); } catch (e) {}
 
     // Create JWT token
+    console.log('🔐 Creating JWT token...');
     const token = jwt.sign(
       { 
-        id: newUser._id, 
-        userId: newUser.userId,
-        username: newUser.username, 
-        role: newUser.role, 
-        name: newUser.name,
-        email: newUser.email
+        id: savedUser._id, 
+        userId: savedUser.userId,
+        username: savedUser.username, 
+        role: savedUser.role, 
+        name: savedUser.name,
+        email: savedUser.email,
+        ownerId: savedUser.ownerId // Include ownerId in JWT payload
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    console.log('🎉 Account created successfully! Sending response...');
     res.status(201).json({
       message: 'Account created successfully!',
       token,
       user: {
-        id: newUser._id,
-        userId: newUser.userId,
-        username: newUser.username,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role
+        id: savedUser._id,
+        userId: savedUser.userId,
+        username: savedUser.username,
+        email: savedUser.email,
+        name: savedUser.name,
+        role: savedUser.role,
+        ownerId: savedUser.ownerId
       }
     });
+    console.log('✅ Response sent successfully');
 
   } catch (err) {
-    console.error('Signup Error:', err);
-    res.status(500).json({ message: 'Server error during registration.' });
+    console.error('❌ SIGNUP ERROR:', err.message);
+    console.error('Error stack:', err.stack);
+    
+    // Handle specific database errors
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      console.log(`⚠️ Duplicate ${field}`);
+      return res.status(409).json({ 
+        message: `This ${field} is already registered. Please use a different one.` 
+      });
+    }
+    
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message);
+      console.log('⚠️ Validation error:', messages);
+      return res.status(400).json({ 
+        message: `Validation failed: ${messages.join(', ')}`
+      });
+    }
+    
+    // Generic server error
+    const errorMsg = 'Server error during registration. Please try again later.';
+    console.error(`📛 Returning 500 error: ${errorMsg}`);
+    res.status(500).json({ 
+      message: errorMsg,
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
@@ -343,7 +430,8 @@ router.post('/login', async (req, res) => {
             username: matchSeed.username, 
             role: matchSeed.role, 
             name: matchSeed.name,
-            email: matchSeed.email
+            email: matchSeed.email,
+            ownerId: matchSeed.ownerId
           },
           JWT_SECRET,
           { expiresIn: '7d' }
@@ -356,7 +444,8 @@ router.post('/login', async (req, res) => {
             username: matchSeed.username, 
             role: matchSeed.role, 
             name: matchSeed.name,
-            email: matchSeed.email
+            email: matchSeed.email,
+            ownerId: matchSeed.ownerId
           }
         });
       }
@@ -401,6 +490,8 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
+    const userOwnerId = user.ownerId || (user.role === 'owner' ? user.userId : 'A7#d2!');
+
     const token = jwt.sign(
       { 
         id: user._id, 
@@ -408,7 +499,8 @@ router.post('/login', async (req, res) => {
         username: user.username, 
         email: user.email,
         role: user.role, 
-        name: user.name 
+        name: user.name,
+        ownerId: userOwnerId
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -424,7 +516,8 @@ router.post('/login', async (req, res) => {
         username: user.username, 
         email: user.email,
         role: user.role, 
-        name: user.name 
+        name: user.name,
+        ownerId: userOwnerId
       }
     });
 
@@ -446,7 +539,9 @@ router.post('/validate-username', async (req, res) => {
       return res.status(400).json({ message: 'Username is required.' });
     }
 
-    const existing = await User.findOne({ username: username.toLowerCase().trim() });
+    const existing = isMongoReady()
+      ? await User.findOne({ username: username.toLowerCase().trim() })
+      : getMemoryUserByQuery({ username: username.toLowerCase().trim() });
     
     if (existing) {
       return res.json({ 
@@ -486,7 +581,9 @@ router.post('/validate-email', async (req, res) => {
       });
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    const existing = isMongoReady()
+      ? await User.findOne({ email: email.toLowerCase().trim() })
+      : getMemoryUserByQuery({ email: email.toLowerCase().trim() });
     
     if (existing) {
       return res.json({ 
@@ -590,6 +687,7 @@ router.post('/users', async (req, res) => {
       const newUser = {
         _id: `memory-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId,
+        ownerId: req.user.ownerId, // Inherit owner's workspace ID
         username: normalizedUsername,
         email: normalizedEmail,
         name: name.trim(),
@@ -651,6 +749,7 @@ router.post('/users', async (req, res) => {
     const userId = normalizedUserId || await generateUniqueUserId();
     const newUser = new User({
       userId,
+      ownerId: req.user.ownerId, // Inherit owner's workspace ID
       username: normalizedUsername,
       email: normalizedEmail,
       name: name.trim(),
@@ -688,11 +787,11 @@ router.get('/users', async (req, res) => {
     }
 
     if (!isMongoReady()) {
-      const sanitizedUsers = inMemoryUsers.map(user => sanitizeUser(user));
+      const sanitizedUsers = inMemoryUsers.filter(u => u.ownerId === req.user.ownerId).map(user => sanitizeUser(user));
       return res.json(sanitizedUsers);
     }
 
-    const users = await User.find({}).sort({ createdAt: -1 }).lean();
+    const users = await User.find({ ownerId: req.user.ownerId }).sort({ createdAt: -1 }).lean();
     const sanitizedUsers = users.map(({ password, ...rest }) => rest);
     res.json(sanitizedUsers);
   } catch (err) {
@@ -707,6 +806,10 @@ router.get('/users/:id', async (req, res) => {
       const targetUser = getMemoryUserById(req.params.id);
       if (!targetUser) return res.status(404).json({ message: 'User not found.' });
 
+      if (targetUser.ownerId !== req.user.ownerId) {
+        return res.status(403).json({ message: 'Access denied to this user\'s details.' });
+      }
+
       if (!req.user || (!canManageUsers(req.user) && !canViewOwnProfile(req.user, targetUser._id.toString()))) {
         return res.status(403).json({ message: 'Access denied.' });
       }
@@ -716,6 +819,10 @@ router.get('/users/:id', async (req, res) => {
 
     const targetUser = await User.findById(req.params.id).lean();
     if (!targetUser) return res.status(404).json({ message: 'User not found.' });
+
+    if (targetUser.ownerId !== req.user.ownerId) {
+      return res.status(403).json({ message: 'Access denied to this user\'s details.' });
+    }
 
     if (!req.user || (!canManageUsers(req.user) && !canViewOwnProfile(req.user, targetUser._id.toString()))) {
       return res.status(403).json({ message: 'Access denied.' });
@@ -737,6 +844,10 @@ router.put('/users/:id', async (req, res) => {
 
     const targetUser = await User.findById(req.params.id);
     if (!targetUser) return res.status(404).json({ message: 'User not found.' });
+
+    if (targetUser.ownerId !== req.user.ownerId) {
+      return res.status(403).json({ message: 'Access denied to edit this user.' });
+    }
 
     const updates = { ...req.body };
     delete updates._id;
@@ -891,15 +1002,35 @@ router.delete('/users/:id', async (req, res) => {
       return res.status(403).json({ message: 'Only the owner can delete users.' });
     }
 
-    const targetUser = await User.findById(req.params.id);
-    if (!targetUser) return res.status(404).json({ message: 'User not found.' });
+    if (isMongoReady()) {
+      const targetUser = await User.findById(req.params.id);
+      if (!targetUser) return res.status(404).json({ message: 'User not found.' });
 
-    await targetUser.deleteOne();
+      // Prevent deleting users from another owner's workspace
+      if (targetUser.ownerId !== req.user.ownerId) {
+        return res.status(403).json({ message: 'Access denied. Cannot delete users from another workspace.' });
+      }
+
+      await targetUser.deleteOne();
+    } else {
+      // In-memory fallback
+      const index = inMemoryUsers.findIndex(u => String(u._id) === req.params.id || u.userId === req.params.id);
+      if (index === -1) return res.status(404).json({ message: 'User not found.' });
+
+      const targetUser = inMemoryUsers[index];
+      if (targetUser.ownerId !== req.user.ownerId) {
+        return res.status(403).json({ message: 'Access denied. Cannot delete users from another workspace.' });
+      }
+
+      inMemoryUsers.splice(index, 1);
+    }
+
     res.json({ message: 'User deleted successfully.' });
   } catch (err) {
     console.error('Delete User Error:', err);
     res.status(500).json({ message: 'Server error while deleting user.' });
   }
+
 });
 
 router.get('/user-activity', async (req, res) => {
@@ -908,7 +1039,8 @@ router.get('/user-activity', async (req, res) => {
       return res.status(403).json({ message: 'Only the owner can view activity logs.' });
     }
 
-    const users = await User.find({}, { name: 1, userId: 1, activityLog: 1 }).lean();
+    // Filter by ownerId to show only this owner's users' activity
+    const users = await User.find({ ownerId: req.user.ownerId }, { name: 1, userId: 1, activityLog: 1 }).lean();
     const activity = users.flatMap(user => (user.activityLog || []).map(entry => ({
       ...entry,
       userName: user.name,
@@ -922,6 +1054,7 @@ router.get('/user-activity', async (req, res) => {
     res.status(500).json({ message: 'Server error while loading activity log.' });
   }
 });
+
 
 router.post('/forgot-password', async (req, res) => {
   try {
@@ -1031,6 +1164,333 @@ router.get('/me', (req, res) => {
 router.post('/logout', (req, res) => {
   // Token is stored client-side, so just confirm logout
   res.json({ message: 'Logged out successfully.' });
+});
+
+// ==================== ADMIN ROUTES ====================
+
+/**
+ * Middleware: Verify user is admin
+ */
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required.' });
+  }
+  next();
+}
+
+/**
+ * GET /api/admin/users
+ * List all users (admin only)
+ */
+router.get('/admin/users', requireAdmin, async (req, res) => {
+  try {
+    let users = [];
+    
+    if (isMongoReady()) {
+      users = await User.find({}).select('-password').lean();
+    } else {
+      users = inMemoryUsers.map(u => {
+        const { password, ...safeUser } = u;
+        return safeUser;
+      });
+    }
+
+    res.json({
+      total: users.length,
+      users: users
+    });
+  } catch (err) {
+    console.error('Admin list users error:', err);
+    res.status(500).json({ message: 'Failed to list users.' });
+  }
+});
+
+/**
+ * GET /api/admin/users/:userId
+ * Get user details (admin only)
+ */
+router.get('/admin/users/:userId', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    let user = null;
+    if (isMongoReady()) {
+      user = await User.findOne({
+        $or: [{ userId }, { _id: userId }]
+      }).select('-password').lean();
+    } else {
+      user = getMemoryUserById(userId);
+      if (user) {
+        const { password, ...safeUser } = user;
+        user = safeUser;
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error('Admin get user error:', err);
+    res.status(500).json({ message: 'Failed to get user details.' });
+  }
+});
+
+/**
+ * POST /api/admin/users/search
+ * Search users by name, email, or username (admin only)
+ */
+router.post('/admin/users/search', requireAdmin, async (req, res) => {
+  try {
+    const { query = '' } = req.body;
+    const searchTerm = query.toLowerCase().trim();
+
+    if (!searchTerm) {
+      return res.status(400).json({ message: 'Search query is required.' });
+    }
+
+    let users = [];
+    if (isMongoReady()) {
+      users = await User.find({
+        $or: [
+          { username: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } },
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { userId: searchTerm }
+        ]
+      }).select('-password').lean();
+    } else {
+      users = inMemoryUsers.filter(u => {
+        const uUsername = (u.username || '').toLowerCase();
+        const uEmail = (u.email || '').toLowerCase();
+        const uName = (u.name || '').toLowerCase();
+        const uUserId = u.userId || '';
+        return uUsername.includes(searchTerm) || 
+               uEmail.includes(searchTerm) || 
+               uName.includes(searchTerm) ||
+               uUserId === searchTerm;
+      }).map(u => {
+        const { password, ...safeUser } = u;
+        return safeUser;
+      });
+    }
+
+    res.json({
+      query: searchTerm,
+      total: users.length,
+      users: users
+    });
+  } catch (err) {
+    console.error('Admin search users error:', err);
+    res.status(500).json({ message: 'Failed to search users.' });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:userId/role
+ * Change user role (admin only)
+ * Body: { role: 'admin' | 'owner' | 'supervisor' | 'servant' }
+ */
+router.put('/admin/users/:userId/role', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    const validRoles = ['admin', 'owner', 'supervisor', 'servant'];
+    if (!role || !validRoles.includes(role)) {
+      return res.status(400).json({ 
+        message: 'Invalid role. Must be one of: admin, owner, supervisor, servant.' 
+      });
+    }
+
+    let user = null;
+    if (isMongoReady()) {
+      user = await User.findOne({
+        $or: [{ userId }, { _id: userId }]
+      });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+      user.role = role;
+      await user.save();
+    } else {
+      user = getMemoryUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+      user.role = role;
+    }
+
+    const { password, ...safeUser } = user;
+    res.json({
+      message: `User role updated to ${role}.`,
+      user: safeUser
+    });
+  } catch (err) {
+    console.error('Admin update role error:', err);
+    res.status(500).json({ message: 'Failed to update user role.' });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:userId/status
+ * Activate/deactivate user (admin only)
+ * Body: { isActive: true | false }
+ */
+router.put('/admin/users/:userId/status', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ message: 'isActive must be a boolean value.' });
+    }
+
+    let user = null;
+    if (isMongoReady()) {
+      user = await User.findOne({
+        $or: [{ userId }, { _id: userId }]
+      });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+      user.isActive = isActive;
+      await user.save();
+    } else {
+      user = getMemoryUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+      user.isActive = isActive;
+    }
+
+    const { password, ...safeUser } = user;
+    res.json({
+      message: `User ${isActive ? 'activated' : 'deactivated'}.`,
+      user: safeUser
+    });
+  } catch (err) {
+    console.error('Admin update status error:', err);
+    res.status(500).json({ message: 'Failed to update user status.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/users/:userId
+ * Delete user (admin only)
+ */
+router.delete('/admin/users/:userId', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (isMongoReady()) {
+      const result = await User.deleteOne({
+        $or: [{ userId }, { _id: userId }]
+      });
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+    } else {
+      const index = inMemoryUsers.findIndex(u => 
+        String(u._id) === String(userId) || u.userId === userId
+      );
+      if (index === -1) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+      inMemoryUsers.splice(index, 1);
+    }
+
+    res.json({ 
+      message: 'User deleted successfully.',
+      deletedUserId: userId
+    });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ message: 'Failed to delete user.' });
+  }
+});
+
+// ==================== DATA MIGRATION ====================
+
+/**
+ * POST /api/auth/migrate-owner-ids
+ * One-time safe migration: backfill ownerId on existing records that don't have it.
+ * Looks up each record's userId → finds that user → gets their ownerId → updates the record.
+ * Safe to run multiple times (only updates records where ownerId is null/empty).
+ */
+router.post('/migrate-owner-ids', async (req, res) => {
+  if (!isMongoReady()) {
+    return res.status(503).json({ message: 'Database not connected. Migration requires MongoDB.' });
+  }
+
+  // Require the request to come from an authenticated owner or admin
+  if (!req.user || (req.user.role !== 'owner' && req.user.role !== 'admin')) {
+    return res.status(403).json({ message: 'Only owners or admins can run data migration.' });
+  }
+
+  try {
+    const Pond = require('../models/Pond');
+    const FeedLog = require('../models/FeedLog');
+    const WaterLog = require('../models/WaterLog');
+    const GrowthLog = require('../models/GrowthLog');
+    const MortalityLog = require('../models/MortalityLog');
+    const Expense = require('../models/Expense');
+    const FeedInventory = require('../models/FeedInventory');
+    const OperationalLog = require('../models/OperationalLog');
+    const ShrimpCountLog = require('../models/ShrimpCountLog');
+    const PondInvestment = require('../models/PondInvestment');
+
+    const results = {};
+
+    // Build a userId → ownerId lookup map from all users
+    const allUsers = await User.find({}, { userId: 1, ownerId: 1, role: 1 }).lean();
+    const userOwnerMap = {};
+    for (const u of allUsers) {
+      if (u.userId) {
+        // For owners: ownerId = their own userId
+        userOwnerMap[u.userId] = u.ownerId || (u.role === 'owner' ? u.userId : null);
+      }
+    }
+
+    // Helper: migrate a collection's records where ownerId is missing
+    async function migrateCollection(Model, name) {
+      const records = await Model.find({ $or: [{ ownerId: null }, { ownerId: '' }, { ownerId: { $exists: false } }] }).lean();
+      let updated = 0;
+      let skipped = 0;
+
+      for (const record of records) {
+        const resolvedOwnerId = userOwnerMap[record.userId];
+        if (resolvedOwnerId) {
+          await Model.updateOne({ _id: record._id }, { $set: { ownerId: resolvedOwnerId } });
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+      results[name] = { found: records.length, updated, skipped };
+    }
+
+    await migrateCollection(Pond, 'Ponds');
+    await migrateCollection(FeedLog, 'FeedLogs');
+    await migrateCollection(WaterLog, 'WaterLogs');
+    await migrateCollection(GrowthLog, 'GrowthLogs');
+    await migrateCollection(MortalityLog, 'MortalityLogs');
+    await migrateCollection(Expense, 'Expenses');
+    await migrateCollection(FeedInventory, 'FeedInventory');
+    await migrateCollection(OperationalLog, 'OperationalLogs');
+    await migrateCollection(ShrimpCountLog, 'ShrimpCountLogs');
+    await migrateCollection(PondInvestment, 'PondInvestments');
+
+    console.log('✅ Data migration completed:', results);
+    res.json({ message: 'Migration completed successfully.', results });
+  } catch (err) {
+    console.error('Migration error:', err);
+    res.status(500).json({ message: 'Migration failed.', error: err.message });
+  }
 });
 
 module.exports = router;

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AQUA FARMING - Signup Test & Debug</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .status { 
+            padding: 15px; 
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .status.ok { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 2px solid #ddd; 
+            border-radius: 4px; 
+            font-size: 14px;
+        }
+        input:focus { border-color: #667eea; outline: none; }
+        button { 
+            background: #667eea; 
+            color: white; 
+            padding: 12px 25px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .output { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            border-left: 4px solid #667eea;
+        }
+        .log-line { margin: 5px 0; }
+        .log-success { color: green; }
+        .log-error { color: red; }
+        .log-warning { color: orange; }
+        .log-info { color: blue; }
+        .requirements { margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+        .req-item { margin: 5px 0; padding: 5px; }
+        .req-ok { color: green; }
+        .req-not-ok { color: red; }
+        .info-box { background: #e3f2fd; padding: 10px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🦐 AQUA FARMING - Account Creation Debugger</h1>
+            <div id="serverStatus" class="status">Checking server...</div>
+        </div>
+
+        <div class="card">
+            <h2>Test Account Creation</h2>
+            <form id="testForm">
+                <div class="form-group">
+                    <label for="name">Full Name:</label>
+                    <input type="text" id="name" value="Test User" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" value="testuser@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" value="testuser" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password (Example: MyPass123):</label>
+                    <input type="password" id="password" value="MyPass123" required>
+                    <div class="requirements" id="passwordReqs">
+                        <strong>Requirements:</strong>
+                        <div class="req-item" id="req-length">⏳ At least 8 characters</div>
+                        <div class="req-item" id="req-upper">⏳ At least one UPPERCASE letter</div>
+                        <div class="req-item" id="req-lower">⏳ At least one lowercase letter</div>
+                        <div class="req-item" id="req-number">⏳ At least one number or special character</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password:</label>
+                    <input type="password" id="confirmPassword" value="MyPass123" required>
+                </div>
+
+                <button type="submit" id="submitBtn">Test Signup</button>
+            </form>
+
+            <div class="info-box" style="margin-top: 20px;">
+                <strong>💡 Tip:</strong> Open browser DevTools (F12) and check Console tab to see detailed logs
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Debug Output</h2>
+            <div class="output" id="output">
+                <div class="log-line log-info">📝 Logs will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const outputDiv = document.getElementById('output');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function log(message, type = 'info') {
+            console.log(message);
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            line.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            outputDiv.appendChild(line);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function updatePasswordReqs() {
+            const password = document.getElementById('password').value;
+            const minLength = password.length >= 8;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+            document.getElementById('req-length').innerHTML = minLength ? '✅ At least 8 characters' : '❌ At least 8 characters';
+            document.getElementById('req-upper').innerHTML = hasUppercase ? '✅ At least one UPPERCASE letter' : '❌ At least one UPPERCASE letter';
+            document.getElementById('req-lower').innerHTML = hasLowercase ? '✅ At least one lowercase letter' : '❌ At least one lowercase letter';
+            document.getElementById('req-number').innerHTML = (hasNumber || hasSpecial) ? '✅ At least one number or special character' : '❌ At least one number or special character';
+        }
+
+        // Check server status
+        async function checkServer() {
+            try {
+                log('🔍 Checking server connection...', 'info');
+                const response = await fetch('http://localhost:5000/', { 
+                    method: 'HEAD',
+                    mode: 'cors'
+                });
+                log('✅ Server is running on http://localhost:5000', 'success');
+                document.getElementById('serverStatus').className = 'status ok';
+                document.getElementById('serverStatus').innerHTML = '✅ Server is ONLINE at http://localhost:5000';
+                submitBtn.disabled = false;
+            } catch (err) {
+                log(`❌ Server check failed: ${err.message}`, 'error');
+                document.getElementById('serverStatus').className = 'status error';
+                document.getElementById('serverStatus').innerHTML = '❌ Server is OFFLINE - Start server: npm start';
+                submitBtn.disabled = true;
+            }
+        }
+
+        // Update password requirements in real-time
+        document.getElementById('password').addEventListener('input', updatePasswordReqs);
+
+        // Initial checks
+        log('🚀 Page loaded', 'info');
+        checkServer();
+        updatePasswordReqs();
+
+        // Form submission
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            log('================== SIGNUP TEST START ==================', 'info');
+            log(`📋 Form Data:`, 'info');
+            log(`   Name: ${name}`, 'info');
+            log(`   Email: ${email}`, 'info');
+            log(`   Username: ${username}`, 'info');
+            log(`   Password: ${password}`, 'info');
+
+            submitBtn.disabled = true;
+
+            try {
+                // Validate locally
+                if (!name || !email || !username || !password || !confirmPassword) {
+                    throw new Error('All fields are required');
+                }
+
+                if (password !== confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                log('✅ Local validation passed', 'success');
+                log('📤 Sending request to /api/auth/signup...', 'info');
+
+                const payload = { name, email, username, password, confirmPassword };
+                log(`📦 Payload: ${JSON.stringify(payload)}`, 'info');
+
+                const response = await fetch('http://localhost:5000/api/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`📥 Response Status: ${response.status}`, 'info');
+
+                const responseText = await response.text();
+                log(`📥 Response Text: ${responseText}`, 'info');
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    log(`✅ JSON Parsed Successfully`, 'success');
+                } catch (e) {
+                    log(`❌ Failed to parse JSON: ${e.message}`, 'error');
+                    throw e;
+                }
+
+                if (response.ok && data.token) {
+                    log(`🎉 Account created successfully!`, 'success');
+                    log(`✅ User ID: ${data.user.userId}`, 'success');
+                    log(`✅ Username: ${data.user.username}`, 'success');
+                    log(`✅ Email: ${data.user.email}`, 'success');
+                    log(`✅ Role: ${data.user.role}`, 'success');
+                    log(`✅ Token: ${data.token.substring(0, 30)}...`, 'success');
+                } else if (data.requirements) {
+                    log(`⚠️ Password requirements not met:`, 'warning');
+                    const reqs = data.requirements;
+                    log(`   minLength: ${reqs.minLength}`, 'warning');
+                    log(`   hasUppercase: ${reqs.hasUppercase}`, 'warning');
+                    log(`   hasLowercase: ${reqs.hasLowercase}`, 'warning');
+                    log(`   hasNumber: ${reqs.hasNumber}`, 'warning');
+                    log(`   hasSpecial: ${reqs.hasSpecial}`, 'warning');
+                } else {
+                    log(`❌ Signup failed: ${data.message}`, 'error');
+                    log(`📋 Full response: ${JSON.stringify(data)}`, 'error');
+                }
+
+                log('================== SIGNUP TEST END ==================', 'info');
+
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, 'error');
+                log(`Stack: ${err.stack}`, 'error');
+                log('================== SIGNUP TEST FAILED ==================', 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Auto-check server every 5 seconds
+        setInterval(checkServer, 5000);
+    </script>
+</body>
+</html>

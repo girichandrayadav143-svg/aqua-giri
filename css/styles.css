@@ -193,6 +193,22 @@ header.app-header {
   align-items: center;
   gap: 0.85rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mobile-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: rgba(14, 165, 233, 0.08);
+  color: var(--primary);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .user-profile-badge {
@@ -228,6 +244,71 @@ header.app-header {
   border: 1px solid var(--border);
 }
 
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 90;
+}
+
+.mobile-nav-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-nav-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(82vw, 360px);
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.96);
+  border-left: 1px solid var(--border);
+  box-shadow: -18px 0 40px rgba(15, 23, 42, 0.15);
+  transform: translateX(105%);
+  transition: transform 0.25s ease;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.mobile-nav-menu.open {
+  transform: translateX(0);
+}
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-nav-close {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-surface-soft);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.mobile-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+}
+
 .nav-tab {
   background: transparent;
   color: var(--text-secondary);
@@ -240,6 +321,16 @@ header.app-header {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.mobile-nav-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface-soft);
+  color: var(--text);
 }
 
 .nav-tab:hover {
@@ -1060,6 +1151,48 @@ textarea.form-control {
   color: var(--text-secondary);
 }
 
+/* ========================================================================
+   Role-Based Visibility Rules
+   ======================================================================== */
+
+/* Hidden by default, shown only for authorized roles */
+.owner-only,
+.supervisor-only,
+.admin-only {
+  display: none !important;
+}
+
+/* Show elements when user has the required role */
+body.role-owner .owner-only,
+body.role-supervisor .supervisor-only,
+body.role-admin .admin-only,
+body.role-owner .admin-only,
+body.role-owner .supervisor-only {
+  display: block !important;
+}
+
+body.role-owner .nav-tab.owner-only,
+body.role-owner .nav-tab.supervisor-only,
+body.role-owner .nav-tab.admin-only,
+body.role-supervisor .nav-tab.supervisor-only,
+body.role-admin .nav-tab.admin-only {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+body.role-supervisor .supervisor-only,
+body.role-admin .admin-only {
+  display: block !important;
+}
+
+body.role-supervisor .nav-tab.supervisor-only,
+body.role-admin .nav-tab.admin-only {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 @media (max-width: 1024px) {
   header.app-header {
     padding: 1rem 1.15rem;
@@ -1074,9 +1207,23 @@ textarea.form-control {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
+
+  header.app-header {
+    width: min(100%, calc(100% - 0.75rem));
+    padding: 0.85rem 0.9rem;
+    border-radius: 0 0 1.2rem 1.2rem;
+  }
+
   .header-top,
   .page-header,
   .filter-bar {
@@ -1084,8 +1231,41 @@ textarea.form-control {
     align-items: stretch;
   }
 
+  .brand-section {
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .brand-text p {
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .user-profile-badge {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    flex-wrap: wrap;
+    border-radius: 0.85rem;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-flex;
+  }
+
   .nav-tabs-wrapper {
-    padding: 0.75rem;
+    display: none;
   }
 
   .search-box {
@@ -1095,14 +1275,95 @@ textarea.form-control {
   .kpi-grid,
   .grid-two-col,
   .grid-three-col,
-  .ponds-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .ponds-grid,
+  .form-grid,
   .feed-slots-grid,
   .slot-selection-grid,
   .consumption-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content-panel,
+  .panel-soft,
+  .kpi-card,
+  .pond-card,
+  .login-card,
+  .modal-card {
+    border-radius: 1rem;
+  }
+
+  .page-title h2 {
+    font-size: 1.35rem;
+  }
+
+  .page-title p,
+  .kpi-subtitle,
+  .detail-val,
+  .form-group label,
+  .modal-body p {
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .filter-group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .filter-select,
+  .search-box,
+  .view-toggle-btns {
+    width: 100%;
+  }
+
+  .view-toggle-btns {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    max-height: 88vh;
+  }
+
+  .modal-header,
+  .modal-footer,
+  .modal-body {
+    padding: 1rem;
+  }
+
+  table.data-table {
+    min-width: 640px;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .form-control,
+  textarea.form-control {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .login-overlay-container {
+    padding: 0.8rem;
+  }
+
+  .login-card {
+    width: 100%;
+    padding: 1.4rem 1.1rem;
   }
 }
 
@@ -1114,13 +1375,42 @@ textarea.form-control {
     justify-content: center;
   }
 
+  .page-header,
+  .filter-bar,
+  .content-panel,
+  .kpi-card,
+  .pond-card,
   .modal-header,
   .modal-footer,
   .modal-body,
   .login-card,
   header.app-header,
   .filter-bar {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+
+  .brand-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+
+  .brand-text h1 {
+    font-size: 1rem;
+  }
+
+  .kpi-value {
+    font-size: 1.7rem;
+  }
+
+  .pond-details-body {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .status-pill {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.65rem;
   }
 }

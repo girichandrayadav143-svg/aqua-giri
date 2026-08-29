@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 
 const waterLogSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  ownerId: { type: String, required: true, index: true },
   pondId: { type: String, required: true },
+
   date: { type: String, required: true },
   time: { type: String },
   ph: { type: Number, required: true },

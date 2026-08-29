@@ -3,7 +3,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 const dotenv = require('dotenv');
-const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
@@ -38,18 +37,10 @@ function startServer(port) {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use((req, res, next) => {
-  const authHeader = req.headers.authorization || '';
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    try {
-      req.user = jwt.verify(token, process.env.JWT_SECRET || 'aqua_farming_secret_jwt_key_2026');
-    } catch (err) {
-      req.user = null;
-    }
-  }
-  next();
-});
+
+// Async JWT auth middleware — properly resolves ownerId for all user roles
+const { authenticateTokenOptional } = require('./middleware/authenticate');
+app.use(authenticateTokenOptional);
 
 // Static Files (Frontend assets, background image, PWA manifest)
 app.use(express.static(path.join(__dirname, '../')));
@@ -68,6 +59,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api', require('./routes/authRoutes'));
 app.use('/api', require('./routes/pondRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/pond-investments', require('./routes/pondInvestmentRoutes'));
 
 // Serve Frontend SPA
 app.get('*', (req, res) => {

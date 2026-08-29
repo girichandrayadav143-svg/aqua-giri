@@ -52,6 +52,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     { time: '04:00 PM', label: '4:00 PM Feed' }
   ];
 
+  function normalizeApiHost(hostname) {
+    if (!hostname || hostname === 'localhost' || hostname === '::1' || hostname === '[::1]' || hostname === '0.0.0.0') {
+      return '127.0.0.1';
+    }
+    return hostname;
+  }
+
+  async function resolveApiBase() {
+    if (window.location.protocol !== 'file:') {
+      const safeHost = normalizeApiHost(window.location.hostname);
+      const safePort = window.location.port || '5000';
+      return `http://${safeHost}:${safePort}`;
+    }
+
+    const ports = [5000, 5001, 5002, 5003, 5004, 5005, 3000, 8080];
+    for (const port of ports) {
+      try {
+        const probe = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+          method: 'OPTIONS',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors'
+        });
+        if (probe && (probe.ok || probe.status === 400 || probe.status === 401 || probe.status === 404)) {
+          return `http://127.0.0.1:${port}`;
+        }
+      } catch (err) {
+        // Try the next port.
+      }
+    }
+
+    return 'http://127.0.0.1:5000';
+  }
+
+  async function apiUrl(path) {
+    const base = await resolveApiBase();
+    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+
   const translations = {
     en: {
       aquaFarming: 'AQUA FARMING',
@@ -188,7 +226,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     return Array.isArray(value) ? value : [];
   }
 
-  // Quick Login Pill autofill helper
+  // ==================== API HELPER WITH AUTHORIZATION ====================
+  /**
+   * Enhanced fetch that automatically includes JWT Authorization header
+   * Handles 401/403 by redirecting to login
+   */
+  async function apiFetch(url, options = {}) {
+    const token = localStorage.getItem('manthena_aqua_jwt');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+
+    // Attach JWT token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('manthena_aqua_jwt');
+      localStorage.removeItem('manthena_aqua_user');
+      state.user = null;
+      document.getElementById('mainAppWrapper').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      showToast('Your session has expired. Please sign in again.', 'error');
+      throw new Error('Unauthorized - session expired');
+    }
+
+    // Handle 403 Forbidden - user doesn't have access
+    if (response.status === 403) {
+      showToast('You do not have permission to access this resource.', 'error');
+      throw new Error('Forbidden - insufficient permissions');
+    }
+
+    return response;
+  }
+
+  // ==================== AUTH TAB SWITCHING ====================
+  const authTabLogin = document.getElementById('authTabLogin');
+  const authTabRegister = document.getElementById('authTabRegister');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+
+  authTabLogin?.addEventListener('click', () => {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    authTabLogin.style.borderBottomColor = '#0d9488';
+    authTabLogin.style.color = '#0d9488';
+    authTabRegister.style.borderBottomColor = 'transparent';
+    authTabRegister.style.color = '#999';
+  });
+
+  authTabRegister?.addEventListener('click', () => {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    authTabRegister.style.borderBottomColor = '#0d9488';
+    authTabRegister.style.color = '#0d9488';
+    authTabLogin.style.borderBottomColor = 'transparent';
+    authTabLogin.style.color = '#999';
+  });
+
+  function toArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
   window.AQUA_APP.fillLogin = function(username, password) {
     const uInput = document.getElementById('loginUsername');
     const pInput = document.getElementById('loginPassword');
@@ -218,58 +324,146 @@ document.addEventListener('DOMContentLoaded', async () => {
     const credential = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
 
+    if (!credential || !password) {
+      showToast('Please enter both username and password.', 'error');
+      return;
+    }
+
     try {
       // Send login request to Node.js Express Backend
-      const res = await fetch('/api/auth/login', {
+      const loginUrl = await apiUrl('/api/auth/login');
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential, password })
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        console.error('Login JSON parse error:', jsonErr);
+        showToast('Server returned an invalid login response. Please try again.', 'error');
+        return;
+      }
 
       if (res.ok && data.token) {
         state.user = {
           username: data.user.username,
+          userId: data.user.userId,
           role: data.user.role,
           name: data.user.name,
+          email: data.user.email,
+          ownerId: data.user.ownerId,  // ← Multi-owner: persist ownerId
           token: data.token
         };
         localStorage.setItem('manthena_aqua_jwt', data.token);
         localStorage.setItem('manthena_aqua_user', JSON.stringify(state.user));
         showToast(`Welcome back, ${data.user.name}!`);
+        document.getElementById('loginForm').reset();
         initAuthenticatedUI();
       } else {
-        // Fallback demo auth if running directly via file:// or without active server
-        performOfflineFallbackAuth(credential, password);
+        showToast(data.message || 'Login failed. Please check your credentials.', 'error');
       }
     } catch (err) {
-      performOfflineFallbackAuth(credential, password);
+      console.error('Login error:', err);
+      showToast('Connection error. Please try again.', 'error');
     }
   });
 
-  function performOfflineFallbackAuth(username, password) {
-    const u = username.toLowerCase();
-    let userObj = null;
-    if (u === 'manthena' && password === 'owner123') {
-      userObj = { username: 'manthena', role: 'owner', name: 'Bhatraju Raju' };
-    } else if (u === 'rajesh' && password === 'super123') {
-      userObj = { username: 'rajesh', role: 'supervisor', name: 'Rajesh Kumar' };
-    } else if (u === 'ramu' && password === 'servant123') {
-      userObj = { username: 'ramu', role: 'servant', name: 'Ramu' };
+  // Registration Form Submission Handler
+  document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value.trim();
+    const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
+
+    if (!name || !email || !username || !password || !confirmPassword) {
+      showToast('Please fill in all fields.', 'error');
+      return;
     }
 
-    if (userObj) {
-      userObj.token = 'demo_token_' + Date.now();
-      state.user = userObj;
-      localStorage.setItem('manthena_aqua_jwt', userObj.token);
-      localStorage.setItem('manthena_aqua_user', JSON.stringify(userObj));
-      showToast(`Welcome, ${userObj.name}!`);
-      initAuthenticatedUI();
-    } else {
-      showToast('Invalid username or password. (Try demo pills above)', 'error');
+    if (password !== confirmPassword) {
+      showToast('Passwords do not match.', 'error');
+      return;
     }
-  }
+
+    try {
+      console.log('🔄 Attempting signup...', { name, email, username });
+      
+      const signupUrl = await apiUrl('/api/auth/signup');
+      console.log('📤 Sending POST to:', signupUrl);
+      
+      const res = await fetch(signupUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ name, email, username, password, confirmPassword })
+      });
+
+      console.log('📥 Server response status:', res.status);
+
+      let data;
+      try {
+        const responseText = await res.text();
+        console.log('📥 Server response text:', responseText);
+        data = JSON.parse(responseText);
+      } catch (jsonErr) {
+        console.error('❌ Failed to parse response:', jsonErr);
+        showToast('❌ Server error: Invalid response. Restart server and try again.', 'error');
+        return;
+      }
+
+      if (res.ok && data.token) {
+        console.log('✅ Account created successfully!');
+        state.user = {
+          username: data.user.username,
+          userId: data.user.userId,
+          role: data.user.role,
+          name: data.user.name,
+          email: data.user.email,
+          ownerId: data.user.ownerId,  // ← Multi-owner: new owner gets their own ownerId
+          token: data.token
+        };
+        localStorage.setItem('manthena_aqua_jwt', data.token);
+        localStorage.setItem('manthena_aqua_user', JSON.stringify(state.user));
+        showToast(`✅ Welcome, ${data.user.name}! Your account has been created.`);
+        document.getElementById('registerForm').reset();
+        initAuthenticatedUI();
+      } else if (data.requirements) {
+        // Password requirements not met
+        console.warn('⚠️ Password requirements not met:', data.requirements);
+        const reqs = data.requirements;
+        let msg = '❌ Password must have:\n';
+        if (!reqs.minLength) msg += '• ❌ At least 8 characters\n';
+        else msg += '• ✅ At least 8 characters\n';
+        
+        if (!reqs.hasUppercase) msg += '• ❌ At least one UPPERCASE letter (A-Z)\n';
+        else msg += '• ✅ At least one UPPERCASE letter (A-Z)\n';
+        
+        if (!reqs.hasLowercase) msg += '• ❌ At least one lowercase letter (a-z)\n';
+        else msg += '• ✅ At least one lowercase letter (a-z)\n';
+        
+        if (!reqs.hasNumber && !reqs.hasSpecial) msg += '• ❌ At least one number (0-9) OR special character (!@#$%^&*)\n';
+        else msg += '• ✅ Has number or special character\n';
+        
+        showToast(msg, 'error');
+      } else if (res.status === 409) {
+        console.warn('⚠️ Conflict - Username or email already exists');
+        showToast(data.message || '❌ Username or email already exists. Try different values.', 'error');
+      } else {
+        console.error('❌ Registration failed:', res.status, data);
+        showToast(`❌ ${data.message || 'Registration failed. Please try again.'}`, 'error');
+      }
+    } catch (err) {
+      console.error('❌ Registration network error:', err);
+      showToast(`❌ Connection error: ${err.message || 'Cannot reach server. Make sure it is running.'}\n\nStart server: npm start`, 'error');
+    }
+  });
 
   // Check saved authentication session
   function checkSavedAuth() {
@@ -310,26 +504,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Logged out successfully.');
   };
 
-  // Data Loading Strategy
+  // Data Loading Strategy — loads all data from the API using the authenticated user's ownerId
   async function loadData() {
+    // Load ponds from API (returns only this owner's ponds, filtered by role)
     try {
-      const res = await fetch('/api/ponds');
+      const res = await apiFetch('/api/ponds');
       if (res.ok) {
         state.ponds = await res.json();
       } else {
         state.ponds = await window.AQUA_STORAGE.getPonds();
       }
-    } catch(e) {
+    } catch (e) {
+      console.error('Error loading ponds:', e);
       state.ponds = await window.AQUA_STORAGE.getPonds();
     }
 
-    state.feedLogs = toArray(await window.AQUA_STORAGE.getFeedLogs?.());
-    state.waterLogs = toArray(await window.AQUA_STORAGE.getWaterLogs?.());
-    state.growthLogs = toArray(await window.AQUA_STORAGE.getGrowthLogs?.());
-    state.mortalityLogs = toArray(await window.AQUA_STORAGE.getMortalityLogs?.());
-    state.feedStock = toArray(await window.AQUA_STORAGE.getFeedStock?.());
-    state.expenses = toArray(await window.AQUA_STORAGE.getExpenses?.());
-    state.operationalLogs = toArray(await fetch('/api/operational-logs').then(r => r.json()).catch(() => []));
+    // Load feed logs from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/feed-logs');
+      state.feedLogs = res.ok ? await res.json() : [];
+    } catch (e) {
+      state.feedLogs = toArray(await window.AQUA_STORAGE.getFeedLogs?.());
+    }
+
+    // Load water logs from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/water-logs');
+      state.waterLogs = res.ok ? await res.json() : [];
+    } catch (e) {
+      state.waterLogs = toArray(await window.AQUA_STORAGE.getWaterLogs?.());
+    }
+
+    // Load growth logs from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/growth-logs');
+      state.growthLogs = res.ok ? await res.json() : [];
+    } catch (e) {
+      state.growthLogs = toArray(await window.AQUA_STORAGE.getGrowthLogs?.());
+    }
+
+    // Load mortality logs from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/mortality-logs');
+      state.mortalityLogs = res.ok ? await res.json() : [];
+    } catch (e) {
+      state.mortalityLogs = [];
+    }
+
+    // Load feed inventory from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/feed-inventory');
+      state.feedStock = res.ok ? [await res.json()] : toArray(await window.AQUA_STORAGE.getFeedStock?.());
+    } catch (e) {
+      state.feedStock = toArray(await window.AQUA_STORAGE.getFeedStock?.());
+    }
+
+    // Load expenses from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/expenses');
+      state.expenses = res.ok ? await res.json() : toArray(await window.AQUA_STORAGE.getExpenses?.());
+    } catch (e) {
+      state.expenses = toArray(await window.AQUA_STORAGE.getExpenses?.());
+    }
+
+    // Load operational logs from API (owner-isolated)
+    try {
+      const res = await apiFetch('/api/operational-logs');
+      state.operationalLogs = res.ok ? await res.json() : [];
+    } catch (e) {
+      state.operationalLogs = [];
+    }
+
     state.ownerNotifications = toArray(state.operationalLogs).filter(log => log.type === 'urgent-report' || log.type === 'notification');
 
     // Calculate DOC for all ponds
@@ -398,6 +643,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3500);
   }
 
+  /**
+   * Format number as currency string
+   */
+  function formatNumber(num) {
+    if (!num && num !== 0) return '0';
+    return parseFloat(num).toLocaleString('en-IN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+  }
+
+  /**
+   * Format date to DD-MM-YYYY or MM/DD/YYYY
+   */
+  function formatDate(dateStr) {
+    if (!dateStr) return '--';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '--';
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch (e) {
+      return '--';
+    }
+  }
+
   function renderAll() {
     renderKPIs();
     renderPondGridOrTable();
@@ -421,6 +694,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function applyRolePermissions() {
     if (!state.user) return;
     const role = state.user.role;
+    
+    // Remove all role classes from body
+    document.body.classList.remove('role-owner', 'role-supervisor', 'role-servant');
+    
+    // Add current user's role class to body for CSS-based visibility
+    document.body.classList.add(`role-${role}`);
+    
     document.querySelectorAll('.owner-only').forEach(el => {
       el.style.display = (role === 'owner') ? '' : 'none';
     });
@@ -1667,9 +1947,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/feed-logs', {
+      await apiFetch('/api/feed-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newLog)
       });
     } catch(e) {}
@@ -1765,9 +2044,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/water-logs', {
+      await apiFetch('/api/water-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newWq)
       });
     } catch(e) {}
@@ -1800,9 +2078,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/water-logs', {
+      await apiFetch('/api/water-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
     } catch (e) {}
@@ -1842,9 +2119,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/growth-logs', {
+      await apiFetch('/api/growth-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newGr)
       });
     } catch(e) {}
@@ -1878,9 +2154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/mortality-logs', {
+      await apiFetch('/api/mortality-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMort)
       });
     } catch (e) {}
@@ -1899,9 +2174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/mortality-logs', {
+      await apiFetch('/api/mortality-logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
     } catch (err) {}
@@ -2819,7 +3093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.AQUA_APP.deletePond = async function(pondId) {
     if (confirm(`Are you sure you want to delete ${pondId}?`)) {
       try {
-        await fetch(`/api/ponds/${pondId}`, { method: 'DELETE' });
+        await apiFetch(`/api/ponds/${pondId}`, { method: 'DELETE' });
       } catch(e) {}
       await window.AQUA_STORAGE.deletePond(pondId);
       showToast(`Pond ${pondId} deleted.`);
@@ -2841,9 +3115,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pondObj = { pondId: pid, id: pid, name, size, stockingDate, status, supervisor, servant, remarks };
 
     try {
-      await fetch('/api/ponds', {
+      await apiFetch('/api/ponds', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pondObj)
       });
     } catch(e) {}
@@ -2931,6 +3204,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Expense saved.', 'success');
   });
 
+  const mobileNavToggle = document.getElementById('mobileNavToggle');
+  const mobileNavMenu = document.getElementById('mobileNavMenu');
+  const mobileNavOverlay = document.getElementById('mobileNavOverlay');
+  const closeMobileNavBtn = document.getElementById('closeMobileNav');
+  const mobileNavList = document.getElementById('mobileNavList');
+
+  function syncMobileNavState() {
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile && mobileNavMenu) {
+      mobileNavMenu.classList.remove('open');
+      mobileNavOverlay.classList.remove('open');
+    }
+  }
+
+  function closeMobileNav() {
+    if (mobileNavMenu) mobileNavMenu.classList.remove('open');
+    if (mobileNavOverlay) mobileNavOverlay.classList.remove('open');
+  }
+
+  function buildMobileNavMenu() {
+    if (!mobileNavList) return;
+
+    const tabs = Array.from(document.querySelectorAll('.nav-tab'));
+    mobileNavList.innerHTML = '';
+
+    tabs.forEach(tab => {
+      const mobileTab = tab.cloneNode(true);
+      mobileTab.classList.add('mobile-nav-item');
+      mobileTab.setAttribute('type', 'button');
+      mobileNavList.appendChild(mobileTab);
+    });
+  }
+
+  mobileNavToggle?.addEventListener('click', () => {
+    if (!mobileNavMenu) return;
+    mobileNavMenu.classList.toggle('open');
+    mobileNavOverlay?.classList.toggle('open');
+  });
+
+  closeMobileNavBtn?.addEventListener('click', closeMobileNav);
+  mobileNavOverlay?.addEventListener('click', closeMobileNav);
+  window.addEventListener('resize', syncMobileNavState);
+
+  buildMobileNavMenu();
+
   function switchTab(tabId) {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content-section').forEach(s => s.classList.remove('active'));
@@ -2941,6 +3259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (targetTabBtn) targetTabBtn.classList.add('active');
     if (targetSection) targetSection.classList.add('active');
     state.activeTab = tabId;
+    closeMobileNav();
 
     if (tabId === 'servant-feeding') {
       const pondGrid = document.getElementById('servantPondsGrid');
@@ -2948,12 +3267,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (pondGrid) pondGrid.style.display = 'grid';
       if (consolePanel) consolePanel.style.display = 'none';
     }
+
+    // Load pond investments when tab is clicked
+    if (tabId === 'investments' && window.AQUA_APP && window.AQUA_APP.initPondInvestments) {
+      window.AQUA_APP.initPondInvestments().catch(err => console.error('Error initializing pond investments:', err));
+    }
   }
 
-  document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      switchTab(e.currentTarget.dataset.tab);
-    });
+  document.addEventListener('click', (event) => {
+    const tab = event.target.closest('.nav-tab');
+    if (!tab) return;
+    switchTab(tab.dataset.tab);
   });
 
   document.querySelectorAll('.view-toggle-btn').forEach(btn => {
@@ -3019,9 +3343,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      await fetch('/api/operational-log', {
+      await apiFetch('/api/operational-log', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       state.operationalLogs = [...state.operationalLogs, payload];
@@ -3092,6 +3415,340 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.AQUA_APP.openFirebaseConfigModal = function() {
     document.getElementById('firebaseConfigModal').classList.add('open');
   };
+
+  // ==================== POND INVESTMENT MANAGEMENT ====================
+
+  /**
+   * Load pond investments summary and display as cards
+   */
+  window.AQUA_APP.loadPondInvestmentSummary = async function() {
+    try {
+      const response = await apiFetch('/api/pond-investments/all/user-ponds');
+      const data = await response.json();
+
+      const container = document.getElementById('pondInvestmentsCardsContainer');
+      if (!container) return;
+
+      if (!data.pondSummaries || Object.keys(data.pondSummaries).length === 0) {
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">No ponds found. Create a pond first.</p>';
+        return;
+      }
+
+      // Render pond cards
+      container.innerHTML = Object.values(data.pondSummaries).map(pond => `
+        <div class="kpi-card" style="cursor: pointer;" onclick="window.AQUA_APP.openPondInvestmentViewModal('${pond.pondId}', '${pond.name}')">
+          <div class="kpi-header">
+            <span class="kpi-title"><i class="fas fa-droplet"></i> ${pond.name}</span>
+          </div>
+          <div class="kpi-value" style="color: var(--success);">₹${formatNumber(pond.totalAmount)}</div>
+          <div class="kpi-label">Total Investment</div>
+          <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+            <i class="fas fa-receipt"></i> ${pond.investmentCount} records
+          </div>
+          <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.AQUA_APP.openPondInvestmentViewModal('${pond.pondId}', '${pond.name}')" style="flex: 1;">
+              <i class="fas fa-eye"></i> View
+            </button>
+            <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); window.AQUA_APP.openPondInvestmentEditModal('${pond.pondId}')" style="flex: 1;">
+              <i class="fas fa-plus"></i> Add
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // Display total farm investment
+      const totalFarmInvestment = data.totalFarmInvestment || 0;
+      const farmTotalCard = document.createElement('div');
+      farmTotalCard.className = 'kpi-card';
+      farmTotalCard.style.backgroundColor = 'linear-gradient(135deg, var(--primary), var(--secondary))';
+      farmTotalCard.innerHTML = `
+        <div class="kpi-header" style="color: white;">
+          <span class="kpi-title"><i class="fas fa-coins"></i> Total Farm Investment</span>
+        </div>
+        <div class="kpi-value" style="color: white;">₹${formatNumber(totalFarmInvestment)}</div>
+        <div class="kpi-label" style="color: rgba(255,255,255,0.8);">All Ponds Combined</div>
+        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 0.5rem;">
+          <i class="fas fa-calculator"></i> ${data.ponds} ponds
+        </div>
+      `;
+      container.appendChild(farmTotalCard);
+    } catch (err) {
+      console.error('Error loading pond investments:', err);
+      showToast('Failed to load pond investments.', 'error');
+    }
+  };
+
+  /**
+   * Open modal to add/edit pond investment
+   */
+  window.AQUA_APP.openPondInvestmentEditModal = function(pondId, investmentId = null) {
+    const modal = document.getElementById('pondInvestmentModal');
+    if (!modal) return;
+
+    // Reset form
+    document.getElementById('pondInvestmentForm').reset();
+    document.getElementById('pondInvestmentId').value = investmentId || '';
+    document.getElementById('pondInvestmentPondId').value = pondId || '';
+    document.getElementById('pondInvestmentDate').valueAsDate = new Date();
+
+    const title = investmentId ? 'Edit Pond Investment' : 'Add Pond Investment';
+    document.getElementById('pondInvestmentModalTitle').textContent = title;
+
+    // If editing, load existing data
+    if (investmentId) {
+      const pond = state.ponds.find(p => p.pondId === pondId);
+      if (pond) {
+        // Find the investment in the loaded data
+        // This is handled after loading the investments
+      }
+    }
+
+    modal.classList.add('open');
+    
+    // Set up form submission
+    const form = document.getElementById('pondInvestmentForm');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await window.AQUA_APP.savePondInvestment(pondId, investmentId);
+    };
+  };
+
+  /**
+   * Save pond investment
+   */
+  window.AQUA_APP.savePondInvestment = async function(pondId, investmentId) {
+    try {
+      const category = document.getElementById('pondInvestmentCategory').value;
+      const amount = parseFloat(document.getElementById('pondInvestmentAmount').value);
+      const date = document.getElementById('pondInvestmentDate').value;
+      const description = document.getElementById('pondInvestmentDescription').value;
+
+      if (!category || !amount || !date) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      if (amount <= 0) {
+        showToast('Amount must be greater than 0.', 'error');
+        return;
+      }
+
+      const method = investmentId ? 'PUT' : 'POST';
+      const url = investmentId 
+        ? await apiUrl(`/api/pond-investments/${pondId}/${investmentId}`)
+        : await apiUrl(`/api/pond-investments/${pondId}`);
+
+      const response = await apiFetch(url, {
+        method,
+        body: JSON.stringify({
+          category: category.trim(),
+          amount,
+          date,
+          description: description.trim()
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showToast(investmentId ? 'Investment updated successfully!' : 'Investment added successfully!', 'success');
+        document.getElementById('pondInvestmentModal').classList.remove('open');
+        
+        // Refresh the view
+        await window.AQUA_APP.loadPondInvestmentSummary();
+        if (state.currentViewPondId) {
+          await window.AQUA_APP.loadPondInvestmentDetails(state.currentViewPondId);
+        }
+      } else {
+        const error = await response.json();
+        showToast(error.message || 'Failed to save investment.', 'error');
+      }
+    } catch (err) {
+      console.error('Error saving investment:', err);
+      showToast('Error saving investment.', 'error');
+    }
+  };
+
+  /**
+   * Open modal to view pond investments
+   */
+  window.AQUA_APP.openPondInvestmentViewModal = async function(pondId, pondName) {
+    const modal = document.getElementById('pondInvestmentViewModal');
+    if (!modal) return;
+
+    state.currentViewPondId = pondId;
+    document.getElementById('pondInvestmentViewTitle').textContent = `${pondName || 'Pond'} - Investments`;
+    
+    modal.classList.add('open');
+    
+    await window.AQUA_APP.loadPondInvestmentDetails(pondId);
+
+    // Set up add investment button
+    document.getElementById('pondInvestmentAddBtn').onclick = () => {
+      modal.classList.remove('open');
+      window.AQUA_APP.openPondInvestmentEditModal(pondId);
+    };
+  };
+
+  /**
+   * Load and display pond investment details
+   */
+  window.AQUA_APP.loadPondInvestmentDetails = async function(pondId) {
+    try {
+      // Load investments
+      const invResponse = await apiFetch(`/api/pond-investments/${pondId}`);
+      const invData = await invResponse.json();
+      const investments = invData.investments || [];
+
+      // Load summary
+      const summaryResponse = await apiFetch(`/api/pond-investments/${pondId}/summary`);
+      const summary = await summaryResponse.json();
+
+      // Render KPI
+      const kpiContainer = document.getElementById('pondInvestmentSummaryKpi');
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title"><i class="fas fa-coins"></i> Total Investment</span>
+            </div>
+            <div class="kpi-value" style="color: var(--success);">₹${formatNumber(summary.totalAmount)}</div>
+            <div class="kpi-label">${summary.investmentCount} Records</div>
+          </div>
+        `;
+      }
+
+      // Render category summary
+      const categoryContainer = document.getElementById('pondInvestmentCategorySummary');
+      if (categoryContainer) {
+        const categories = summary.categories || [];
+        categoryContainer.innerHTML = categories.map(cat => {
+          const amount = summary.categoryTotals[cat] || 0;
+          return `
+            <div style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; border-left: 3px solid var(--primary);">
+              <div style="font-weight: 600; color: var(--text-primary);">${cat}</div>
+              <div style="font-size: 1.25rem; color: var(--success); margin-top: 0.25rem;">₹${formatNumber(amount)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render investment list
+      const listContainer = document.getElementById('pondInvestmentListBody');
+      if (listContainer) {
+        listContainer.innerHTML = investments.map(inv => `
+          <tr>
+            <td>${formatDate(inv.date)}</td>
+            <td>${inv.category || 'Other'}</td>
+            <td style="font-weight: 600; color: var(--success);">₹${formatNumber(inv.amount)}</td>
+            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${inv.description}">${inv.description || '--'}</td>
+            <td>
+              <button class="btn btn-sm btn-info" onclick="window.AQUA_APP.openPondInvestmentEditModal('${pondId}', '${inv._id}')" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="window.AQUA_APP.deletePondInvestment('${pondId}', '${inv._id}')" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        if (investments.length === 0) {
+          listContainer.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No investments yet.</td></tr>';
+        }
+      }
+    } catch (err) {
+      console.error('Error loading pond investment details:', err);
+      showToast('Failed to load investment details.', 'error');
+    }
+  };
+
+  /**
+   * Delete pond investment
+   */
+  window.AQUA_APP.deletePondInvestment = async function(pondId, investmentId) {
+    if (!confirm('Are you sure you want to delete this investment? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const url = await apiUrl(`/api/pond-investments/${pondId}/${investmentId}`);
+      const response = await apiFetch(url, { method: 'DELETE' });
+
+      if (response.ok) {
+        showToast('Investment deleted successfully!', 'success');
+        await window.AQUA_APP.loadPondInvestmentSummary();
+        await window.AQUA_APP.loadPondInvestmentDetails(pondId);
+      } else {
+        const error = await response.json();
+        showToast(error.message || 'Failed to delete investment.', 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting investment:', err);
+      showToast('Error deleting investment.', 'error');
+    }
+  };
+
+  /**
+   * Export pond investments to CSV
+   */
+  window.AQUA_APP.exportPondInvestmentsCSV = async function(pondId, pondName) {
+    try {
+      const response = await apiFetch(`/api/pond-investments/${pondId}`);
+      const data = await response.json();
+      const investments = data.investments || [];
+
+      if (investments.length === 0) {
+        showToast('No investments to export.', 'error');
+        return;
+      }
+
+      // Create CSV
+      const headers = ['Date', 'Category', 'Amount (₹)', 'Description'];
+      const rows = investments.map(inv => [
+        formatDate(inv.date),
+        inv.category || 'Other',
+        inv.amount || 0,
+        `"${(inv.description || '').replace(/"/g, '""')}"` // Escape quotes
+      ]);
+
+      const csvContent = [
+        [pondName + ' - Investment Report'],
+        [],
+        headers,
+        ...rows
+      ].map(row => row.join(',')).join('\n');
+
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${pondName}_investments_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showToast('Investments exported successfully!', 'success');
+    } catch (err) {
+      console.error('Error exporting investments:', err);
+      showToast('Failed to export investments.', 'error');
+    }
+  };
+
+  // Initialize pond investments on dashboard load
+  window.AQUA_APP.initPondInvestments = async function() {
+    await window.AQUA_APP.loadPondInvestmentSummary();
+  };
+
+  function getRoleColor(role) {
+    const colors = {
+      owner: '#2196F3',
+      supervisor: '#FF9800',
+      servant: '#4CAF50'
+    };
+    return colors[role] || '#9E9E9E';
+  }
 
   // Check saved user session on startup
   checkSavedAuth();

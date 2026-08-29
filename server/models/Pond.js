@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 
 const pondSchema = new mongoose.Schema({
-  pondId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  ownerId: { type: String, required: true, index: true },
+  pondId: { type: String, required: true },
+
   name: { type: String, required: true },
   size: { type: Number, required: true, default: 5 },
   stockingDate: { type: String, required: true },

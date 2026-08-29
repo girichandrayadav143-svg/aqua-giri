@@ -30,17 +30,22 @@ function matchesAssignedUser(user, pond) {
 
 function canAccessPond(user, pond) {
   if (!user || !pond) return false;
+  
+  // Enforce ownerId matching
+  if (user.ownerId && pond.ownerId && user.ownerId !== pond.ownerId) {
+    return false;
+  }
+  
   const role = normalizeText(user.role);
-
-  if (role === 'owner' || role === 'supervisor') {
+  if (role === 'owner') {
     return true;
   }
 
-  if (role !== 'servant') {
-    return false;
+  if (role === 'supervisor' || role === 'servant') {
+    return matchesAssignedUser(user, pond);
   }
 
-  return matchesAssignedUser(user, pond);
+  return false;
 }
 
 function getAccessiblePondIds(user, ponds) {
@@ -49,13 +54,20 @@ function getAccessiblePondIds(user, ponds) {
 
 function canEditPond(user, pond) {
   if (!user || !pond) return false;
+  
+  // Enforce ownerId matching
+  if (user.ownerId && pond.ownerId && user.ownerId !== pond.ownerId) {
+    return false;
+  }
+  
   const role = normalizeText(user.role);
-
   if (role === 'owner') return true;
-  if (role === 'supervisor') return true;
-  if (role !== 'servant') return false;
 
-  return matchesAssignedUser(user, pond);
+  if (role === 'supervisor' || role === 'servant') {
+    return matchesAssignedUser(user, pond);
+  }
+
+  return false;
 }
 
 function canEditDashboardCards(user) {
@@ -66,6 +78,12 @@ function canEditDashboardCards(user) {
 
 function canDeletePond(user, pond) {
   if (!user || !pond) return false;
+  
+  // Enforce ownerId matching
+  if (user.ownerId && pond.ownerId && user.ownerId !== pond.ownerId) {
+    return false;
+  }
+  
   return normalizeText(user.role) === 'owner';
 }
 

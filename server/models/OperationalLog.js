@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 
 const operationalLogSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  ownerId: { type: String, required: true, index: true },
   type: { type: String, required: true, index: true },
+
   pondId: { type: String, default: '' },
   pondName: { type: String, default: '' },
   servantName: { type: String, default: '' },

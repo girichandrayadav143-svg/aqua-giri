@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 
 const expenseSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  ownerId: { type: String, required: true, index: true },
   type: { type: String, enum: ['expense', 'investment', 'manual-investment'], default: 'expense' },
+
   category: { type: String, required: true, trim: true },
   amount: { type: Number, default: 0 },
   date: { type: String, required: true },
@@ -16,7 +19,11 @@ const expenseSchema = new mongoose.Schema({
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedByName: { type: String, default: '' },
   approvalNotes: { type: String, default: '' },
-  source: { type: String, default: 'servant' }
+  source: { type: String, default: 'servant' },
+  // New fields for investment categorization
+  investmentType: { type: String, enum: ['pond', 'owner'], default: 'pond' },
+  linkedPond: { type: mongoose.Schema.Types.ObjectId, ref: 'Pond', default: null },
+  investmentName: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.models.Expense || mongoose.model('Expense', expenseSchema);
