@@ -330,9 +330,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-      // Send login request to Node.js Express Backend
-      const loginUrl = await apiUrl('/api/auth/login');
-      const res = await fetch(loginUrl, {
+      // Use relative URL — Express serves both frontend and API from same origin
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential, password })
@@ -392,13 +391,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       console.log('🔄 Attempting signup...', { name, email, username });
-      
-      const signupUrl = await apiUrl('/api/auth/signup');
-      console.log('📤 Sending POST to:', signupUrl);
-      
-      const res = await fetch(signupUrl, {
+
+      // Use relative URL — Express serves both frontend and API from same origin
+      const res = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
