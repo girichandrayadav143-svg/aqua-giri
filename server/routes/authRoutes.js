@@ -291,10 +291,18 @@ router.post('/signup', async (req, res) => {
 
     let savedUser = null;
     if (isMongoReady()) {
-      console.log('💾 Saving new user to database:', newUser.username);
-      savedUser = await newUser.save();
-      console.log('✅ User saved successfully. ID:', savedUser.userId);
-    } else {
+      try {
+        console.log('💾 Saving new user to MongoDB:', username);
+        savedUser = await newUser.save();
+        console.log('✅ User saved to MongoDB. ID:', savedUser.userId);
+      } catch (dbErr) {
+        console.error('⚠️ MongoDB save failed, falling back to in-memory:', dbErr.message);
+        // Fall through to in-memory below
+      }
+    }
+
+    if (!savedUser) {
+      // In-memory fallback (used when MongoDB is unavailable)
       savedUser = {
         _id: `memory-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
         userId,
@@ -317,7 +325,7 @@ router.post('/signup', async (req, res) => {
         updatedAt: new Date()
       };
       inMemoryUsers.push(savedUser);
-      console.log('✅ User saved in memory fallback. ID:', savedUser.userId);
+      console.log('✅ User saved in-memory. ID:', savedUser.userId);
     }
 
     // Create JWT token

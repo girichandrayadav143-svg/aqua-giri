@@ -7,64 +7,87 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const DEFAULT_PORT = Number(process.env.PORT || 5000);
+const PORT = process.env.PORT || 5000;
 
-function startServer(port) {
-  const server = app.listen(port, () => {
-    const displayPort = server.address().port;
-    console.log(`=======================================================`);
-    console.log(`🦐 AQUA FARMING MERN Server Running on Port ${displayPort}`);
-    console.log(`🔗 Local Access: http://localhost:${displayPort}`);
-    console.log(`=======================================================`);
-    if (displayPort !== DEFAULT_PORT) {
-      console.log(`⚠️ Port ${DEFAULT_PORT} was busy, so the server started on ${displayPort}.`);
-    }
-  });
+// ── CORS — allow all origins (works on localhost AND Render production) ──
+app.use(cors({
+  origin: true,           // reflect request origin — allows any domain
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
+app.options('*', cors());  // pre-flight for all routes
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      const fallbackPort = port + 1;
-      console.log(`⚠️ Port ${port} is busy. Trying ${fallbackPort}...`);
-      startServer(fallbackPort);
-      return;
-    }
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-    console.error(err);
-    process.exit(1);
-  });
-}
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Async JWT auth middleware — properly resolves ownerId for all user roles
+// Async JWT auth middleware
 const { authenticateTokenOptional } = require('./middleware/authenticate');
 app.use(authenticateTokenOptional);
 
-// Static Files (Frontend assets, background image, PWA manifest)
+// Static Files (Frontend)
 app.use(express.static(path.join(__dirname, '../')));
 
-// MongoDB Mongoose Connection setup
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/aqua_farming';
+// ── MongoDB Connection ──
+const MONGODB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('🍃 MongoDB Connected Successfully via Mongoose'))
-  .catch((err) => {
-    console.log('⚡ MongoDB local server not detected - Running in resilient Hybrid MERN Mode.');
+if (MONGODB_URI && !MONGODB_URI.includes('127.0.0.1') && !MONGODB_URI.includes('localhost')) {
+  // Production MongoDB Atlas connection
+  mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 8000,
+    connectTimeoutMS: 10000,
+  })
+    .then(() => console.log('🍃 MongoDB Atlas Connected Successfully'))
+    .catch(err => {
+      console.error('❌ MongoDB Atlas connection failed:', err.message);
+      console.log('⚡ Running in in-memory fallback mode (data resets on restart)');
+    });
+} else if (MONGODB_URI && (MONGODB_URI.includes('127.0.0.1') || MONGODB_URI.includes('localhost'))) {
+  // Local MongoDB
+  mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 3000,
+    connectTimeoutMS: 5000,
+  })
+    .then(() => console.log('🍃 MongoDB Local Connected Successfully'))
+    .catch(() => {
+      console.log('⚡ Local MongoDB not available - using in-memory mode');
+    });
+} else {
+  console.log('⚡ No MONGODB_URI set - running in in-memory mode');
+}
+
+// ── Health Check endpoint ──
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    mode: mongoose.connection.readyState === 1 ? 'database' : 'in-memory',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
   });
+});
 
-// API Routes
+// ── API Routes ──
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api', require('./routes/authRoutes'));
 app.use('/api', require('./routes/pondRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
 app.use('/api/pond-investments', require('./routes/pondInvestmentRoutes'));
 
-// Serve Frontend SPA
+// ── Serve Frontend SPA (must be LAST) ──
 app.get('*', (req, res) => {
+  // Only serve HTML for non-API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ message: 'API endpoint not found' });
+  }
   res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// Start Server
-startServer(DEFAULT_PORT);
+// ── Start Server ──
+app.listen(PORT, () => {
+  console.log('=======================================================');
+  console.log(`🦐 AQUA FARMING Server Running on Port ${PORT}`);
+  console.log(`🔗 Local Access: http://localhost:${PORT}`);
+  console.log(`🗄️  MongoDB: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Connecting...'}`);
+  console.log('=======================================================');
+});
