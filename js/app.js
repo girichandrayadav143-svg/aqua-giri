@@ -553,86 +553,89 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadData();
   }
 
-  // Logout Handler
+  // Logout — clears JWT, user info, AND all in-memory state so the
+  // next owner who logs in starts with a completely clean slate.
   window.AQUA_APP.logout = function() {
     localStorage.removeItem('manthena_aqua_jwt');
     localStorage.removeItem('manthena_aqua_user');
-    state.user = null;
+    // Clear all in-memory data to prevent data leaking to the next login session
+    state.user          = null;
+    state.ponds         = [];
+    state.feedLogs      = [];
+    state.waterLogs     = [];
+    state.growthLogs    = [];
+    state.mortalityLogs = [];
+    state.feedStock     = [];
+    state.expenses      = [];
+    state.operationalLogs      = [];
+    state.ownerNotifications   = [];
     document.getElementById('mainAppWrapper').style.display = 'none';
     document.getElementById('loginOverlay').style.display = 'flex';
+    // Switch back to Sign In tab
+    setActiveAuthTab('login');
     showToast('Logged out successfully.');
   };
 
-  // Data Loading Strategy — loads all data from the API using the authenticated user's ownerId
+  // ══════════════════════════════════════════════
+  // loadData() — ALL data comes from the API only.
+  // The API enforces ownerId isolation via JWT.
+  // NEVER fall back to AQUA_STORAGE (localStorage)
+  // as it is NOT owner-isolated and would leak data.
+  // ══════════════════════════════════════════════
   async function loadData() {
-    // Load ponds from API (returns only this owner's ponds, filtered by role)
+    // Ponds — API returns only authenticated owner's ponds
     try {
       const res = await apiFetch('/api/ponds');
-      if (res.ok) {
-        state.ponds = await res.json();
-      } else {
-        state.ponds = await window.AQUA_STORAGE.getPonds();
-      }
+      state.ponds = res.ok ? await res.json() : [];
     } catch (e) {
-      console.error('Error loading ponds:', e);
-      state.ponds = await window.AQUA_STORAGE.getPonds();
+      console.warn('Ponds API unavailable:', e.message);
+      state.ponds = [];
     }
 
-    // Load feed logs from API (owner-isolated)
+    // Feed logs — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/feed-logs');
       state.feedLogs = res.ok ? await res.json() : [];
-    } catch (e) {
-      state.feedLogs = toArray(await window.AQUA_STORAGE.getFeedLogs?.());
-    }
+    } catch (e) { state.feedLogs = []; }
 
-    // Load water logs from API (owner-isolated)
+    // Water quality logs — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/water-logs');
       state.waterLogs = res.ok ? await res.json() : [];
-    } catch (e) {
-      state.waterLogs = toArray(await window.AQUA_STORAGE.getWaterLogs?.());
-    }
+    } catch (e) { state.waterLogs = []; }
 
-    // Load growth logs from API (owner-isolated)
+    // Growth logs — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/growth-logs');
       state.growthLogs = res.ok ? await res.json() : [];
-    } catch (e) {
-      state.growthLogs = toArray(await window.AQUA_STORAGE.getGrowthLogs?.());
-    }
+    } catch (e) { state.growthLogs = []; }
 
-    // Load mortality logs from API (owner-isolated)
+    // Mortality logs — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/mortality-logs');
       state.mortalityLogs = res.ok ? await res.json() : [];
-    } catch (e) {
-      state.mortalityLogs = [];
-    }
+    } catch (e) { state.mortalityLogs = []; }
 
-    // Load feed inventory from API (owner-isolated)
+    // Feed inventory — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/feed-inventory');
-      state.feedStock = res.ok ? [await res.json()] : toArray(await window.AQUA_STORAGE.getFeedStock?.());
-    } catch (e) {
-      state.feedStock = toArray(await window.AQUA_STORAGE.getFeedStock?.());
-    }
+      if (res.ok) {
+        const inv = await res.json();
+        state.feedStock = Array.isArray(inv) ? inv : (inv ? [inv] : []);
+      } else { state.feedStock = []; }
+    } catch (e) { state.feedStock = []; }
 
-    // Load expenses from API (owner-isolated)
+    // Expenses — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/expenses');
-      state.expenses = res.ok ? await res.json() : toArray(await window.AQUA_STORAGE.getExpenses?.());
-    } catch (e) {
-      state.expenses = toArray(await window.AQUA_STORAGE.getExpenses?.());
-    }
+      state.expenses = res.ok ? await res.json() : [];
+    } catch (e) { state.expenses = []; }
 
-    // Load operational logs from API (owner-isolated)
+    // Operational logs — owner-isolated via JWT
     try {
       const res = await apiFetch('/api/operational-logs');
       state.operationalLogs = res.ok ? await res.json() : [];
-    } catch (e) {
-      state.operationalLogs = [];
-    }
+    } catch (e) { state.operationalLogs = []; }
 
     state.ownerNotifications = toArray(state.operationalLogs).filter(log => log.type === 'urgent-report' || log.type === 'notification');
 
@@ -649,6 +652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateStorageBadge();
     renderAll();
   }
+
 
   function generateNextPondId() {
     if (!state.ponds.length) return 'P001';
